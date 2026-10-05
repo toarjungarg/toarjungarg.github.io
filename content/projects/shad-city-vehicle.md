@@ -2,7 +2,7 @@
 title: "Three-Wheeled City Vehicle Prototype"
 summary: "A mini-prototype of a small vehicle designed to stay efficient at downtown speeds."
 period: "Summer 2025"
-tools: ["CAD", "3D printing", "KiCad"]
+tools: ["SolidWorks", "3D printing", "KiCad"]
 image: ""
 link: ""
 award: "Best Prototype, SHAD 2025"
