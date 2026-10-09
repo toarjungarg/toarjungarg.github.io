@@ -4,8 +4,7 @@ row: 1
 order: 3
 role: "Team Engineer"
 organization: "SHAD Program"
-location: "Memorial University, St. John's, NL"
-start: "Summer 2025"
+start: "Jul 2025"
 end: ""
 link: "https://www.shad.ca"
 ---
