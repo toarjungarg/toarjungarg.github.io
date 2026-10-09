@@ -2,8 +2,8 @@
 label: "SHAD"
 row: 1
 order: 3
-role: "Participant"
-organization: "SHAD 2025"
+role: "Team Engineer"
+organization: "SHAD Program"
 location: "Memorial University, St. John's, NL"
 start: "Summer 2025"
 end: ""
