@@ -1,76 +1,72 @@
-// Projects: one project at a time on a "wheel".
-// A wide ^ above and v below, each with two fainter arrows that curve off to the left.
-// Everything sits on a big circle whose centre is far to the left, so when you click,
-// the project rolls along that curve and away while the next one rolls in.
+// Projects: one project at a time, with a ^ above it and a v below it.
+// Each project turns around a circle whose centre sits to the left of the page, so
+// clicking ^ rolls the project up and away along that curve while the next one rolls in
+// from below; v does the opposite.
 (function () {
   'use strict';
 
   var mount = document.getElementById('project-wheel');
   if (!mount) return;
 
-  var EXIT = 0.95;   // how far (in radians) a project rolls before it's gone
-  var GAP = 34;      // space between the project and the main arrow, in px
-  var STEP = 30;     // space between the faded arrows, in px
+  var EXIT = 0.7;     // how far (in radians) a project rolls before it's gone
+  var CENTRE = 260;   // how far left of the project the circle's centre is, in px
+  var GAP = 22;       // space between the project and its arrows, in px
 
   Site.data.then(function (data) {
     var list = data.section('projects');
     if (list.length) build(list);
   });
 
-  function chevron(up, cls) {
-    var b = document.createElement(cls === 'main' ? 'button' : 'span');
-    b.className = 'chev ' + cls;
-    b.innerHTML = '<svg viewBox="0 0 100 10" preserveAspectRatio="none" aria-hidden="true"><path d="' +
-      (up ? 'M 0 10 L 50 0 L 100 10' : 'M 0 0 L 50 10 L 100 0') + '" vector-effect="non-scaling-stroke"/></svg>';
-    if (cls === 'main') {
-      b.type = 'button';
-      b.setAttribute('aria-label', up ? 'Previous project' : 'Next project');
-    } else {
-      b.setAttribute('aria-hidden', 'true');
-    }
+  // About a 93 degree point, like a big < > turned on its side
+  function chevron(up) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'chev';
+    b.setAttribute('aria-label', up ? 'Next project (roll up)' : 'Previous project (roll down)');
+    b.innerHTML = '<svg viewBox="0 0 84 42" aria-hidden="true"><path d="' +
+      (up ? 'M 2 40 L 42 2 L 82 40' : 'M 2 2 L 42 40 L 82 2') + '"/></svg>';
     return b;
   }
 
   function build(list) {
-    var cards = list.map(function (e, n) { return buildCard(e, n, list.length); });
-    var ups = [chevron(true, 'main'), chevron(true, 'ghost g1'), chevron(true, 'ghost g2')];
-    var downs = [chevron(false, 'main'), chevron(false, 'ghost g1'), chevron(false, 'ghost g2')];
-    cards.concat(ups, downs).forEach(function (c) { mount.appendChild(c); });
+    var cards = list.map(buildCard);
+    var up = chevron(true), down = chevron(false);
+    cards.concat([up, down]).forEach(function (c) { mount.appendChild(c); });
 
-    var i = 0, R = 700, cardH = 0;
+    var i = 0, top = 0, arrowH = 40;
 
-    // Put an element on the wheel at an angle (0 = front and centre, negative = up, positive = down)
-    function place(node, angle, extra) {
-      node.style.transform = 'translate(-50%, -50%) translateX(' + (-R) + 'px) rotate(' + angle + 'rad) translateX(' + R + 'px)' + (extra || '');
+    // Turn a project around the circle's centre (0 = in front, negative = rolled up)
+    function place(card, angle) {
+      card.style.transform = 'rotate(' + angle + 'rad)';
     }
 
     function layout() {
-      var w = mount.clientWidth;
-      R = Math.max(380, w * 0.75);
-      cardH = Math.max.apply(null, cards.map(function (c) { return c.offsetHeight; }));
-      mount.style.height = (cardH + 2 * (GAP + 2 * STEP + 44)) + 'px';
-      placeArrows();
+      var small = mount.clientWidth < 600;
+      var arrowW = small ? 56 : 80;
+      arrowH = arrowW / 2;
+      up.style.width = down.style.width = arrowW + 'px';
+      up.style.height = down.style.height = arrowH + 'px';
+
+      var cardH = Math.max.apply(null, cards.map(function (c) { return c.offsetHeight; }));
+      top = arrowH + GAP + 8;                       // every project starts just under the ^
+      mount.style.height = (cardH + 2 * (GAP + arrowH) + 16) + 'px';
+
       cards.forEach(function (c, n) {
+        var h = c.offsetHeight;
+        c.style.top = top + 'px';
+        c.style.transformOrigin = (-CENTRE) + 'px ' + (h / 2) + 'px'; // the circle's centre
         c.style.transition = 'none';
         place(c, n === i ? 0 : EXIT);
       });
       void mount.offsetWidth;
       cards.forEach(function (c) { c.style.transition = ''; });
+      placeArrows();
     }
 
-    // Main arrows sit straight above and below the project showing now; the faded ones
-    // step away and curve a little to the left
+    // The ^ stays under the heading; the v sits just under whichever project is showing
     function placeArrows() {
-      var w = mount.clientWidth, h = cards[i].offsetHeight;
-      [ups, downs].forEach(function (set, k) {
-        var sign = k === 0 ? -1 : 1;
-        set.forEach(function (c, n) {
-          c.style.width = Math.min(w * 0.7, 560) * (1 - n * 0.1) + 'px';
-          var y = sign * (h / 2 + GAP + n * STEP);
-          var x = -n * n * 16;
-          c.style.transform = 'translate(-50%, -50%) translate(' + x + 'px, ' + y + 'px) rotate(' + (sign * n * 5) + 'deg)';
-        });
-      });
+      up.style.top = (top - GAP - arrowH) + 'px';
+      down.style.top = (top + cards[i].offsetHeight + GAP) + 'px';
     }
 
     function show(n) {
@@ -81,37 +77,29 @@
       });
     }
 
-    function go(step) {
-      if (list.length < 2) { Site.shake(step < 0 ? ups[0] : downs[0]); return; }
+    // dir = 1: roll up (the project leaves upward, the next comes in from below)
+    // dir = -1: roll down (the project leaves downward, the previous comes in from above)
+    function go(dir) {
+      if (list.length < 2) { Site.shake(dir > 0 ? up : down); return; }
       var from = cards[i];
-      i = (i + step + list.length) % list.length;
+      i = (i + dir + list.length) % list.length;
       var to = cards[i];
       // the new one starts on the side it comes from, without animating there
       to.style.transition = 'none';
-      place(to, step > 0 ? EXIT : -EXIT);
+      place(to, dir > 0 ? EXIT : -EXIT);
       void to.offsetWidth;
       to.style.transition = '';
       place(to, 0);
-      place(from, step > 0 ? -EXIT : EXIT);
+      place(from, dir > 0 ? -EXIT : EXIT);
       show(i);
       placeArrows();
-      nudge(step > 0 ? downs : ups);
     }
 
-    // The arrows on the side you clicked give a small push along the curve
-    function nudge(set) {
-      if (Site.reduced) return;
-      set.forEach(function (c, n) {
-        c.animate([{ opacity: c === set[0] ? 1 : 0.6 - n * 0.2 }, { opacity: 1 }, { opacity: getComputedStyle(c).opacity }],
-          { duration: 420, delay: n * 70 });
-      });
-    }
-
-    ups[0].addEventListener('click', function () { go(-1); });
-    downs[0].addEventListener('click', function () { go(1); });
+    up.addEventListener('click', function () { go(1); });
+    down.addEventListener('click', function () { go(-1); });
     mount.addEventListener('keydown', function (e) {
-      if (e.key === 'ArrowUp') { e.preventDefault(); go(-1); }
-      if (e.key === 'ArrowDown') { e.preventDefault(); go(1); }
+      if (e.key === 'ArrowUp') { e.preventDefault(); go(1); }
+      if (e.key === 'ArrowDown') { e.preventDefault(); go(-1); }
     });
 
     show(0);
@@ -124,20 +112,19 @@
     document.fonts.ready.then(layout); // text height changes once the font arrives
   }
 
-  function buildCard(e, n, total) {
+  function buildCard(e) {
     var m = e.meta;
     var card = Site.el('article', 'pcard');
     var text = Site.el('div', 'ptext');
 
-    var count = Site.el('p', 'pcount');
-    count.textContent = String(n + 1).padStart(2, '0') + ' / ' + String(total).padStart(2, '0');
-    var title = Site.el('h3', 'ptitle');
-    title.textContent = m.label || m.title || '';
-    var info = Site.el('p', 'xinfo');
-    info.textContent = [m.period, m.award].filter(Boolean).join(' · ');
-    text.appendChild(count);
-    text.appendChild(title);
-    text.appendChild(info);
+    // Heading, two lines:  Project  /  Deliverable (Month Year - Month Year)
+    var name = Site.el('p', 'entry-name');
+    name.textContent = m.title || '';
+    var sub = Site.el('p', 'entry-sub');
+    var when = Site.dates(m);
+    sub.textContent = (m.deliverable || '') + (when ? ' (' + when + ')' : '');
+    text.appendChild(name);
+    text.appendChild(sub);
 
     var ul = Site.el('ul', 'bullets');
     e.bullets.forEach(function (b) { ul.appendChild(Site.el('li', null, b)); });
@@ -145,7 +132,7 @@
 
     if (m.tools && m.tools.length) {
       var tools = Site.el('p', 'ptools');
-      tools.textContent = m.tools.join(' · ');
+      tools.textContent = m.tools.join(', ');
       text.appendChild(tools);
     }
     if (m.link) {
@@ -158,7 +145,7 @@
     }
 
     card.appendChild(text);
-    var g = Site.gallery(e.media, m.label || m.title || 'Project');
+    var g = Site.gallery(e.media, m.title || 'Project');
     if (g) {
       var photos = Site.el('div', 'xphotos');
       photos.appendChild(g);
