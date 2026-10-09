@@ -218,6 +218,33 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
 .ptools { margin: 14px 0 0; font-size: 13px; color: var(--ink-2); }
 .plink { display: inline-block; margin-top: 10px; }
 
+/* ---------- Resume ---------- */
+
+.resume-head { position: relative; display: flex; align-items: baseline; margin-bottom: 12px; }
+.resume-head .section-title { margin: 0; }
+.resume-hint { position: absolute; left: 50%; transform: translateX(-50%); bottom: 2px; color: var(--ink-2); font-size: 14px; }
+
+/* A wide box with the page standing in the middle; hovering slowly scrolls down the page */
+.resume-box {
+  position: relative;
+  display: block;
+  height: 380px;
+  overflow: hidden;
+  border: 1.5px solid var(--ink);
+  border-radius: var(--radius);
+  background: var(--paper-2);
+}
+.resume-box img {
+  display: block;
+  width: min(560px, 62%);
+  margin: 0 auto;
+  border-left: 1.5px solid var(--ink);
+  border-right: 1.5px solid var(--ink);
+  transition: transform 5s ease-in-out;
+}
+.resume-box:hover img, .resume-box:focus-visible img { transform: translateY(calc(-100% + 380px)); }
+.resume-box:hover { text-decoration: none; }
+
 /* ---------- Photo galleries ---------- */
 
 .gallery {
@@ -309,6 +336,10 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
   .xbody { grid-template-columns: minmax(0, 1fr); gap: 20px; }
   .xhead, .xname { font-size: 18px; }
   .pcard { grid-template-columns: minmax(0, 1fr); gap: 18px; }
+  .resume-hint { position: static; transform: none; margin-left: 12px; }
+  .resume-box { height: 300px; }
+  .resume-box img { width: 82%; }
+  .resume-box:hover img, .resume-box:focus-visible img { transform: translateY(calc(-100% + 300px)); }
 }
 
 @media (prefers-reduced-motion: reduce) {
