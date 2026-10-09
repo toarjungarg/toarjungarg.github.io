@@ -5,7 +5,6 @@ order: 1
 show_first: true
 role: "Founder & President"
 organization: "CandyForKids.org"
-location: "Mississauga, ON"
 start: "2016"
 end: "Present"
 link: "https://candyforkids.org"
