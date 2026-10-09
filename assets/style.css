@@ -14,14 +14,10 @@
   --tab-text: #fff8ef;
 
   --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
-  --serif: "IBM Plex Serif", Georgia, serif;
   --font: var(--mono);
   --radius: 14px;
 }
 
-/* Two versions to compare: add ?font=serif or ?accent=red to the address */
-:root[data-font="serif"] { --font: var(--serif); }
-:root[data-accent="red"] { --accent: #8b1e1e; }
 
 /* ---------- Page ---------- */
 
@@ -94,7 +90,6 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
   letter-spacing: -0.02em;
   white-space: nowrap;
 }
-:root[data-font="serif"] .name { font-weight: 600; letter-spacing: -0.01em; }
 .name .ch {
   display: inline-block;
   transition: transform 0.8s cubic-bezier(0.65, 0, 0.35, 1), opacity 0.25s ease;
@@ -128,6 +123,7 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
 /* ---------- Sections ---------- */
 
 .section { margin-top: 120px; scroll-margin-top: 32px; }
+#experience { margin-top: 76px; } /* first section sits a little closer to the header */
 .section-title { margin: 0 0 32px; font-size: 22px; font-weight: 700; }
 
 .bullets { margin: 0; padding: 0; list-style: none; }
@@ -172,37 +168,43 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
 .xbody.out-left, .xbody.in-left { opacity: 0; transform: translateX(-16px); }
 .xbody.out-right, .xbody.in-right { opacity: 0; transform: translateX(16px); }
 .xbody.in-left, .xbody.in-right { transition: none; }
-.xrole { margin: 0; font-weight: 500; }
-.xinfo { margin: 2px 0 14px; color: var(--ink-2); font-size: 14px; }
-.xinfo a { color: var(--ink-2); text-decoration: underline; text-decoration-color: var(--faint); text-underline-offset: 3px; }
+.entry-name { margin: 0; font-size: 17px; font-weight: 700; }
+.entry-name a { text-decoration: underline; text-decoration-color: var(--faint); text-underline-offset: 4px; }
+.entry-name a:hover { text-decoration-color: currentColor; }
+.entry-sub { margin: 2px 0 14px; color: var(--ink-2); }
 
 /* ---------- Projects wheel ---------- */
 
 .section-title.center { text-align: center; letter-spacing: 0.08em; }
 
+/* Heights and positions are set by assets/js/projects.js */
 .wheel {
   position: relative;
   overflow-x: visible;
   overflow-y: clip;   /* projects rolling away disappear at the top/bottom edge */
-  min-height: 300px;
+  min-height: 260px;
 }
 
-.chev, .pcard {
+.chev {
   position: absolute;
   left: 50%;
-  top: 50%;
+  transform: translateX(-50%);
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink);
+  cursor: pointer;
+  transition: top 0.6s cubic-bezier(0.55, 0, 0.3, 1), color 0.2s ease;
 }
-
-.chev { display: block; height: 16px; padding: 0; border: 0; background: none; color: var(--ink); transition: transform 0.6s cubic-bezier(0.55, 0, 0.3, 1), color 0.2s ease; }
 .chev svg { display: block; width: 100%; height: 100%; overflow: visible; }
-.chev path { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
-.chev.main { cursor: pointer; height: 22px; }
-.chev.main::after { content: ""; position: absolute; inset: -12px 0; } /* bigger click area */
-.chev.main:hover { color: var(--accent); }
-.chev.g1 { opacity: 0.35; }
-.chev.g2 { opacity: 0.14; }
+.chev path { fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.chev::after { content: ""; position: absolute; inset: -10px; } /* bigger click area */
+.chev:hover { color: var(--accent); }
 
 .pcard {
+  position: absolute;
+  left: 0;
   width: 100%;
   display: grid;
   grid-template-columns: minmax(0, 1fr) 380px;
@@ -212,23 +214,24 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
   transition: transform 0.75s cubic-bezier(0.55, 0, 0.3, 1), opacity 0.5s ease;
 }
 .pcard.on { opacity: 1; transition: transform 0.75s cubic-bezier(0.55, 0, 0.3, 1), opacity 0.6s ease 0.15s; }
-.pcard.no-photos { grid-template-columns: minmax(0, 1fr); max-width: 720px; }
-.pcount { margin: 0 0 6px; font: 12px var(--mono); color: var(--pencil); }
-.ptitle { margin: 0; font-size: 20px; font-weight: 700; }
+.pcard.no-photos { grid-template-columns: minmax(0, 1fr); }
 .ptools { margin: 14px 0 0; font-size: 13px; color: var(--ink-2); }
 .plink { display: inline-block; margin-top: 10px; }
 
 /* ---------- Resume ---------- */
 
-.resume-head { position: relative; display: flex; align-items: baseline; margin-bottom: 12px; }
-.resume-head .section-title { margin: 0; }
-.resume-hint { position: absolute; left: 50%; transform: translateX(-50%); bottom: 2px; color: var(--ink-2); font-size: 14px; }
+.resume-head { display: flex; flex-direction: column; margin-bottom: 12px; }
+.resume-head .section-title { margin: 0 0 18px; }
+.resume-hint { align-self: center; color: var(--ink-2); font-size: 14px; }
 
-/* A wide box with the page standing in the middle; hovering slowly scrolls down the page */
+/* A centred box with the page standing in the middle; hovering slowly scrolls down the page */
 .resume-box {
   position: relative;
   display: block;
-  height: 380px;
+  width: 100%;
+  max-width: 680px;
+  height: 440px;
+  margin: 0 auto;
   overflow: hidden;
   border: 1.5px solid var(--ink);
   border-radius: var(--radius);
@@ -236,14 +239,18 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
 }
 .resume-box img {
   display: block;
-  width: min(560px, 62%);
+  width: 82%;
   margin: 0 auto;
   border-left: 1.5px solid var(--ink);
   border-right: 1.5px solid var(--ink);
   transition: transform 5s ease-in-out;
 }
-.resume-box:hover img, .resume-box:focus-visible img { transform: translateY(calc(-100% + 380px)); }
+.resume-box:hover img, .resume-box:focus-visible img { transform: translateY(calc(-100% + 440px)); }
 .resume-box:hover { text-decoration: none; }
+
+/* ---------- Top 10 Songs ---------- */
+
+.spotify { display: block; width: 100%; height: 352px; border: 0; border-radius: 12px; }
 
 /* ---------- Trips Map ---------- */
 
@@ -261,7 +268,7 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
   stroke: var(--ink-2);
   stroke-width: 0.9;
   stroke-linejoin: round;
-  transition: fill 0.8s ease;
+  transition: fill 0.5s ease;
 }
 .map-frame.drawn .world path { fill: var(--paper-2); }
 
@@ -276,7 +283,7 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
   transform: translate(-50%, -100%) translateY(-14px);
   opacity: 0;
   transition: opacity 0.3s ease, transform 0.35s cubic-bezier(0.3, 1.6, 0.6, 1);
-  transition-delay: calc(var(--n) * 140ms);
+  transition-delay: calc(var(--n) * 60ms);
 }
 .map-frame.drawn .pin { opacity: 1; transform: translate(-50%, -100%); }
 .pin svg { display: block; width: 100%; height: 100%; overflow: visible; }
@@ -355,32 +362,50 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
 
 /* ---------- Footer ---------- */
 
-.footer { margin: 120px 0 40px; color: var(--ink-2); font-size: 13px; }
+.footer { margin: 60px 0 28px; color: var(--ink-2); font-size: 13px; }
 
-/* ---------- Font / colour comparison switch (only shows on this Mac) ---------- */
+/* ---------- Hidden section (bottom of the page, full window width) ---------- */
 
-.compare {
+.intro .shh { opacity: 0; }
+.shh { width: 100%; }
+
+/* The band you pull up: glued to the bottom of the window, full width, 0 tall until pulled.
+   assets/js/hidden.js sets its height and moves the page up by the same amount. */
+.shh-strip {
   position: fixed;
-  left: 12px;
-  bottom: 12px;
-  z-index: 50;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 40;
   display: flex;
-  gap: 6px;
-  padding: 6px;
-  background: var(--paper-2);
-  border: 1px solid var(--faint);
-  border-radius: 8px;
-  font: 12px var(--mono);
+  flex-wrap: wrap;
+  align-content: flex-start;
+  align-items: baseline;
+  gap: 2px 14px;
+  height: 0;
+  padding: 0 12px;
+  background: var(--tab);
+  color: var(--tab-text);
+  overflow: hidden;
+  pointer-events: none;
 }
-.compare button {
-  font: inherit;
-  padding: 4px 8px;
-  border: 1px solid var(--faint);
-  border-radius: 6px;
-  background: var(--paper);
-  color: var(--ink);
-  cursor: pointer;
+.shh-word { line-height: 1.1; white-space: nowrap; }
+.shh-strip.settling { transition: height 0.09s ease-out; }
+.page.settling { transition: transform 0.09s ease-out; }
+
+/* The panel it opens into: 30% of the window tall, against the far left edge */
+.shh-tab {
+  position: relative;
+  min-height: 30vh;
+  padding: 28px 24px 32px;
+  background: var(--tab);
+  color: var(--tab-text);
+  text-align: left;
 }
+.shh-title { margin: 0 0 18px; font-size: 22px; font-weight: 700; }
+.shh-list { margin: 0; padding: 0; list-style: none; font-size: 16px; }
+.shh-list li { position: relative; padding-left: 22px; margin-bottom: 10px; }
+.shh-list li::before { content: "-"; position: absolute; left: 2px; opacity: 0.7; }
 
 /* ---------- Phones ---------- */
 
@@ -394,9 +419,7 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
   .xbody { grid-template-columns: minmax(0, 1fr); gap: 20px; }
   .xhead, .xname { font-size: 18px; }
   .pcard { grid-template-columns: minmax(0, 1fr); gap: 18px; }
-  .resume-hint { position: static; transform: none; margin-left: 12px; }
   .resume-box { height: 300px; }
-  .resume-box img { width: 82%; }
   .title-note { display: block; margin: 4px 0 0; }
   .map-frame { padding: 16px 10px; }
   .pin { width: 15px; height: 21px; }

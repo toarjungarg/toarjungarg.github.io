@@ -7,8 +7,8 @@
   <meta name="description" content="Arjun Garg, Mechatronics Engineering student at the University of Waterloo.">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
-  <link rel="stylesheet" href="assets/style.css">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&family=IBM+Plex+Mono:wght@400;700&family=JetBrains+Mono:wght@400;500;700&family=Space+Mono:wght@400;700&display=swap">
+  <link rel="stylesheet" href="assets/style.css?v=4">
   <script>
     // Hide the nav and sections until the loading animation shows them.
     // Safety net: if the animation script never runs, show everything after 6 seconds.
@@ -63,6 +63,12 @@
         </a>
       </section>
 
+      <!-- Top 10 Songs: filled in by assets/js/songs.js from content/songs.md -->
+      <section class="section" id="songs">
+        <h2 class="section-title">Top 10 Songs <span class="title-note" id="songs-updated"></span></h2>
+        <div id="songs-list"></div>
+      </section>
+
       <!-- Trips Map: outline in assets/world.svg, pins from content/map.md, drawn by assets/js/map.js -->
       <section class="section" id="map">
         <h2 class="section-title">Trips Map <span class="title-note">(places that changed me + where I want to go)</span></h2>
@@ -72,12 +78,26 @@
     </div>
 
     <footer class="footer">&copy; 2026 Arjun Garg</footer>
+
+    </div>
   </main>
 
-  <script src="assets/js/intro.js"></script>
-  <script src="assets/js/site.js"></script>
-  <script src="assets/js/experience.js"></script>
-  <script src="assets/js/projects.js"></script>
-  <script src="assets/js/map.js"></script>
+  <!-- shh. Full window width, outside the page column (assets/js/hidden.js, text from content/memorable.md) -->
+  <div class="shh" id="shh">
+    <div class="shh-strip" aria-hidden="true"></div>
+    <div class="shh-tab" id="shh-tab" hidden>
+      <h2 class="shh-title">traits I find memorable</h2>
+      <ul class="shh-list"></ul>
+    </div>
+  </div>
+
+  <script src="assets/js/draft.js?v=4"></script>
+  <script src="assets/js/intro.js?v=4"></script>
+  <script src="assets/js/site.js?v=4"></script>
+  <script src="assets/js/experience.js?v=4"></script>
+  <script src="assets/js/projects.js?v=4"></script>
+  <script src="assets/js/songs.js?v=4"></script>
+  <script src="assets/js/map.js?v=4"></script>
+  <script src="assets/js/hidden.js?v=4"></script>
 </body>
 </html>
