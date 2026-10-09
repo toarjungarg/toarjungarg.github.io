@@ -1,4 +1,8 @@
 ---
+label: "Midnight Sun"
+row: 1
+order: 2
+show_first: true
 role: "Electrical & Dynamics Team Member"
 organization: "Midnight Sun Solar Car Team"
 location: "University of Waterloo"

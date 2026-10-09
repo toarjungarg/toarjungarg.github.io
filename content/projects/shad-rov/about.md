@@ -1,4 +1,6 @@
 ---
+label: "SHAD → Underwater ROV"
+order: 2
 title: "Underwater ROV"
 summary: "Led the design of a remotely operated vehicle for an underwater competition."
 period: "Summer 2025"

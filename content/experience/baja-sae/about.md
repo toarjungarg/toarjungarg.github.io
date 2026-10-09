@@ -1,4 +1,7 @@
 ---
+label: "Baja SAE"
+row: 1
+order: 1
 role: "Electrical Team Member"
 organization: "Baja SAE Team"
 location: "University of Waterloo"

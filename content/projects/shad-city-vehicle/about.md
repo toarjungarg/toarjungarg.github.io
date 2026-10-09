@@ -1,4 +1,6 @@
 ---
+label: "SHAD → PulseRide"
+order: 1
 title: "PulseRide: Three-Wheeled City Vehicle Prototype"
 summary: "A mini-prototype of a small electric three-wheeled vehicle designed to stay efficient at downtown speeds."
 period: "Summer 2025"

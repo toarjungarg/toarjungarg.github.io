@@ -1,4 +1,8 @@
 ---
+label: "CandyForKids"
+row: 2
+order: 1
+show_first: true
 role: "Founder & President"
 organization: "CandyForKids.org"
 location: "Mississauga, ON"

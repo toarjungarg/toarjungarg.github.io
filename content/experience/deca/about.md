@@ -1,4 +1,7 @@
 ---
+label: "DECA"
+row: 2
+order: 2
 role: "Competitor"
 organization: "DECA"
 location: "Mississauga, ON"
