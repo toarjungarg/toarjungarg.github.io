@@ -4,7 +4,6 @@ row: 1
 order: 1
 role: "Electrical Team Member"
 organization: "Baja SAE Team"
-location: "University of Waterloo"
 start: "Sep 2026"
 end: "Present"
 link: "https://waterloobaja.ca"
