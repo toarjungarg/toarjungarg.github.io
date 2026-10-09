@@ -1,0 +1,31 @@
+---
+layout: null
+permalink: /site-data.json
+---
+{%- comment -%}
+  GitHub Pages runs Jekyll on every push, and Jekyll fills in this file:
+  every .md file in content/ (its settings and its text as HTML), plus every other file in content/ (photos, videos).
+  The page reads this one file, so a new entry or photo shows up without changing any code.
+{%- endcomment -%}
+{
+  "entries": [
+    {%- assign n = 0 -%}
+    {%- for p in site.pages -%}
+      {%- if p.path contains "content/" and p.name contains ".md" -%}
+        {%- if n > 0 %},{% endif -%}
+        {%- assign n = n | plus: 1 %}
+    { "path": {{ p.path | jsonify }}, "meta": {{ p | jsonify }}, "html": {{ p.content | markdownify | jsonify }} }
+      {%- endif -%}
+    {%- endfor %}
+  ],
+  "files": [
+    {%- assign m = 0 -%}
+    {%- for f in site.static_files -%}
+      {%- if f.path contains "/content/" -%}
+        {%- if m > 0 %},{% endif -%}
+        {%- assign m = m | plus: 1 %}
+    {{ f.path | jsonify }}
+      {%- endif -%}
+    {%- endfor %}
+  ]
+}

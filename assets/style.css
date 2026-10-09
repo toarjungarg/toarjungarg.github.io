@@ -125,6 +125,107 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
 .intro .nav-row { transform: translateY(-8px); }
 .intro .links li { transform: translateX(-8px); }
 
+/* ---------- Sections ---------- */
+
+.section { margin-top: 120px; scroll-margin-top: 32px; }
+.section-title { margin: 0 0 32px; font-size: 22px; font-weight: 700; }
+
+.bullets { margin: 0; padding: 0; list-style: none; }
+.bullets li { position: relative; padding-left: 20px; margin-bottom: 8px; }
+.bullets li::before { content: "-"; position: absolute; left: 2px; color: var(--ink-2); }
+
+/* Shake when there's nothing in that direction */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-4px); }
+  40% { transform: translateX(4px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(2px); }
+}
+.shake { animation: shake 0.35s ease; }
+
+/* ---------- Experience ---------- */
+
+.xrow { margin-bottom: 64px; }
+.xrow:last-child { margin-bottom: 0; }
+
+.xhead { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; font-size: 20px; }
+.xhead button { font: inherit; background: none; border: 0; padding: 0; cursor: pointer; color: inherit; }
+.xname { margin: 0; font-size: 20px; line-height: 1.3; transition: opacity 0.18s ease; }
+.xname.current { font-weight: 700; }
+.xname.side { color: var(--faint); }
+.xname.side:hover { color: var(--ink-2); }
+.xname[hidden] { display: none; }
+.xhead.switching .xname { opacity: 0.3; }
+.xarrow { display: inline-block; padding: 0 2px !important; color: var(--ink) !important; }
+.xarrow:hover { color: var(--accent) !important; }
+.xarrow[aria-disabled="true"] { color: var(--faint) !important; cursor: default; }
+
+.xbody {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 40px;
+  margin-top: 18px;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.xbody.no-photos { grid-template-columns: minmax(0, 1fr); }
+.xbody.out-left, .xbody.in-left { opacity: 0; transform: translateX(-16px); }
+.xbody.out-right, .xbody.in-right { opacity: 0; transform: translateX(16px); }
+.xbody.in-left, .xbody.in-right { transition: none; }
+.xrole { margin: 0; font-weight: 500; }
+.xinfo { margin: 2px 0 14px; color: var(--ink-2); font-size: 14px; }
+.xinfo a { color: var(--ink-2); text-decoration: underline; text-decoration-color: var(--faint); text-underline-offset: 3px; }
+
+/* ---------- Photo galleries ---------- */
+
+.gallery {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  border: 1px solid var(--ink);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--paper-2);
+}
+.gallery .slide {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+.gallery .slide.on { opacity: 1; }
+.gbtn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(244, 238, 226, 0.88);
+  color: var(--ink);
+  font: 16px var(--mono);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+.gbtn.prev { left: 8px; }
+.gbtn.next { right: 8px; }
+.gallery:hover .gbtn, .gallery:focus-within .gbtn { opacity: 1; }
+@media (hover: none) { .gbtn { opacity: 0.85; } }
+.gcount {
+  position: absolute;
+  right: 8px;
+  bottom: 6px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: rgba(244, 238, 226, 0.88);
+  font: 11px var(--mono);
+  color: var(--ink-2);
+}
+.gcount:empty { display: none; }
+
 /* ---------- Footer ---------- */
 
 .footer { margin: 120px 0 40px; color: var(--ink-2); font-size: 13px; }
@@ -162,6 +263,9 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
   .nav { min-width: 0; width: 100%; padding-top: 0; }
   .nav-row, .nav-row:nth-child(2) { justify-content: flex-start; }
   .links { gap: 18px; }
+  .section { margin-top: 88px; }
+  .xbody { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+  .xhead, .xname { font-size: 18px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
