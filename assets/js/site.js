@@ -60,9 +60,18 @@ window.Site = (function () {
     return e;
   }
 
+  // "Sep 2026" -> "Sept, 2026"; years on their own ("2016") and words ("Present") stay as they are
+  var MONTHS = { Jan: 'Jan', Feb: 'Feb', Mar: 'Mar', Apr: 'Apr', May: 'May', Jun: 'June', June: 'June',
+    Jul: 'July', July: 'July', Aug: 'Aug', Sep: 'Sept', Sept: 'Sept', Oct: 'Oct', Nov: 'Nov', Dec: 'Dec' };
+  function fullDate(d) {
+    var m = String(d || '').match(/^([A-Za-z]{3,4})\.?,?\s+(\d{4})$/);
+    return m && MONTHS[m[1]] ? MONTHS[m[1]] + ', ' + m[2] : String(d || '');
+  }
+
+  // "Sept, 2026 - Present", or just "July, 2025" when there's no end
   function dates(meta) {
-    var s = meta.start || meta.period || '';
-    return meta.end ? s + ' – ' + meta.end : s;
+    var s = fullDate(meta.start || meta.period);
+    return meta.end ? s + ' - ' + fullDate(meta.end) : s;
   }
 
   // Shake an arrow (and buzz the phone) when there's nothing in that direction

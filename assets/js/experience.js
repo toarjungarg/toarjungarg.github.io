@@ -101,22 +101,15 @@
     var body = Site.el('div', 'xbody');
     var text = Site.el('div', 'xtext');
 
-    var role = Site.el('p', 'xrole');
-    role.textContent = m.role || '';
-    var info = Site.el('p', 'xinfo');
-    var org = Site.el(m.link ? 'a' : 'span');
-    org.textContent = m.organization || '';
-    if (m.link) { org.href = m.link; org.target = '_blank'; org.rel = 'noopener'; }
-    info.appendChild(org);
-    [m.location, Site.dates(m)].forEach(function (part) {
-      if (part) info.appendChild(document.createTextNode(' · ' + part));
-    });
+    // Under the < Name > heading: Role (Month, Year - Month, Year)
+    var sub = Site.el('p', 'entry-sub');
+    var when = Site.dates(m);
+    sub.textContent = (m.role || '') + (when ? ' (' + when + ')' : '');
 
     var ul = Site.el('ul', 'bullets');
     e.bullets.forEach(function (b) { ul.appendChild(Site.el('li', null, b)); });
 
-    text.appendChild(role);
-    text.appendChild(info);
+    text.appendChild(sub);
     text.appendChild(ul);
     body.appendChild(text);
 
