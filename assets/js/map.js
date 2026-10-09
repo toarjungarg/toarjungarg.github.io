@@ -92,13 +92,13 @@
 
     function check() {
       var r = frame.getBoundingClientRect();
-      if (r.top > window.innerHeight * 0.75 || r.bottom < 0) return; // not on screen yet
+      if (r.top > window.innerHeight * 0.95 || r.bottom < 0) return; // not on screen yet
       window.removeEventListener('scroll', check);
       window.removeEventListener('resize', check);
       void path.getBoundingClientRect();
-      path.style.transition = 'stroke-dashoffset 2.6s ease-in-out, fill 0.8s ease';
+      path.style.transition = 'stroke-dashoffset 0.9s ease-out, fill 0.5s ease';
       path.style.strokeDashoffset = '0';
-      setTimeout(function () { frame.classList.add('drawn'); }, 2500);
+      setTimeout(function () { frame.classList.add('drawn'); }, 650);
     }
     window.addEventListener('scroll', check, { passive: true });
     window.addEventListener('resize', check);
