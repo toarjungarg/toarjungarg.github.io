@@ -3,9 +3,8 @@ label: "Midnight Sun"
 row: 1
 order: 2
 show_first: true
-role: "Electrical & Dynamics Team Member"
+role: "Electrical and Dynamics Subteam Member"
 organization: "Midnight Sun Solar Car Team"
-location: "University of Waterloo"
 start: "Sep 2026"
 end: "Present"
 link: "https://www.uwmidsun.com"
