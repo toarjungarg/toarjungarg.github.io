@@ -43,6 +43,14 @@ window.Site = (function () {
       };
     });
 
+  // Sections fill in after the page loads, so a link like /#projects needs a second jump once they have
+  data.then(function () {
+    setTimeout(function () {
+      var target = location.hash && document.getElementById(location.hash.slice(1));
+      if (target) target.scrollIntoView({ behavior: 'instant' });
+    }, 60);
+  });
+
   // ----- Small helpers -----
 
   function el(tag, cls, html) {
