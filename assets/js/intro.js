@@ -1,24 +1,19 @@
 // Loading animation for the header box.
-// The border draws like a pencil sketch (every line at the same speed), each line
-// gets dimensioned as soon as it finishes, then the letters slide together and
-// the nav and links fade in. Clicking, scrolling or pressing a key skips it.
+// The border draws like a pencil sketch (every line at the same speed), each line gets
+// dimensioned as soon as it finishes, every letter of the name gets its own dimension, then
+// the letters slide together and the nav and links fade in. Clicking, scrolling or pressing
+// a key skips it. The drawing itself is done by assets/js/draft.js.
 (function () {
   'use strict';
 
-  var NS = 'http://www.w3.org/2000/svg';
   var root = document.documentElement;
   var hero = document.querySelector('.hero');
-  var svg = hero.querySelector('.sketch');
   var nameEl = hero.querySelector('.name');
 
-  var LONGEST_LINE_MS = 1300; // the longest line takes this long; shorter ones finish sooner
-  var DIM_MS = 260;           // how long a dimension takes to draw
-
-  // ----- Font / colour comparison: ?font=serif and ?accent=red, plus a switch on this Mac -----
-  var params = new URLSearchParams(location.search);
-  if (params.get('font')) root.dataset.font = params.get('font');
-  if (params.get('accent')) root.dataset.accent = params.get('accent');
-  if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') addCompareSwitch();
+  var LONGEST_LINE_MS = 560;  // the longest border line takes this long; shorter ones finish sooner
+  var SWEEP_MS = 850;         // time for the letter sweep to cross the whole box
+  var HOLD_MS = 650;          // how long the finished drawing stays up before the letters close up
+  var DIM_MS = 260;           // how long a dimension takes to draw (matches draft.js)
 
   // ----- Split the name into one span per letter so each can move on its own -----
   var text = nameEl.textContent.trim();
@@ -32,175 +27,153 @@
     nameEl.appendChild(s);
     return s;
   });
-  // A zero-size marker sitting on the text baseline, used to measure where the baseline is
-  var probe = document.createElement('span');
-  probe.style.cssText = 'display:inline-block;width:0;height:0;vertical-align:baseline';
-  nameEl.appendChild(probe);
 
+  var sheet = Draft.sheet(hero);
   var timers = [];
-  var anims = [];
   var state = 'waiting'; // waiting -> playing -> done
 
-  // ----- Small helpers -----
-
-  function make(tag, attrs, parent) {
-    var e = document.createElementNS(NS, tag);
-    for (var k in attrs) e.setAttribute(k, attrs[k]);
-    if (parent) parent.appendChild(e);
-    return e;
-  }
-
   function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
+  function px(n) { return Math.round(n) + 'px'; }
 
-  // Position of an element relative to the top-left corner of the header box
-  function rel(el) {
-    var h = hero.getBoundingClientRect();
-    var r = el.getBoundingClientRect();
-    return { x: r.left - h.left, y: r.top - h.top, right: r.right - h.left, bottom: r.bottom - h.top };
-  }
-
-  // Ink measurements of one character in the name's font
-  var ctx = document.createElement('canvas').getContext('2d');
-  function ink(ch) {
-    var cs = getComputedStyle(nameEl);
-    ctx.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
-    var m = ctx.measureText(ch);
-    return { left: m.actualBoundingBoxLeft, right: m.actualBoundingBoxRight, up: m.actualBoundingBoxAscent, down: m.actualBoundingBoxDescent };
-  }
-
-  // The four sides of the rounded box, each with one corner, drawn clockwise
-  function borderPaths(w, h) {
-    var r = Math.min(14, h / 4);
+  // The rounded box as one closed outline, clockwise from the end of the top-left corner
+  function outline(w, h) {
+    var r = corner(h);
     var arc = ' A ' + r + ' ' + r + ' 0 0 1 ';
-    return [
-      'M 0 ' + r + arc + r + ' 0 H ' + (w - r),             // top
-      'M ' + (w - r) + ' 0' + arc + w + ' ' + r + ' V ' + (h - r), // right
-      'M ' + w + ' ' + (h - r) + arc + (w - r) + ' ' + h + ' H ' + r, // bottom
-      'M ' + r + ' ' + h + arc + '0 ' + (h - r) + ' V ' + r        // left
-    ];
+    return 'M ' + r + ' 0 H ' + (w - r) + arc + w + ' ' + r + ' V ' + (h - r) + arc + (w - r) + ' ' + h +
+      ' H ' + r + arc + '0 ' + (h - r) + ' V ' + r + arc + r + ' 0 Z';
+  }
+  function corner(h) { return Math.min(14, h / 4); }
+
+  // Where the border starts drawing from. Any points work (each snaps to the nearest spot on the
+  // border), so later these can follow the cursor. Now: the bottom-left and top-right corners.
+  function borderStarts(w, h) {
+    return [[0, h], [w, 0]];
+  }
+
+  // Distance ranges of each side along the outline, for knowing when a side is finished
+  function sideRanges(w, h) {
+    var r = corner(h), q = Math.PI * r / 2, W = w - 2 * r, H = h - 2 * r;
+    return {
+      top: [0, W],
+      right: [W + q, W + q + H],
+      brCorner: [W + q + H, W + 2 * q + H],
+      bottom: [W + 2 * q + H, 2 * W + 2 * q + H],
+      left: [2 * W + 3 * q + H, 2 * W + 3 * q + 2 * H]
+    };
   }
 
   function drawFinalBorder() {
-    svg.innerHTML = '';
-    borderPaths(hero.offsetWidth, hero.offsetHeight).forEach(function (d) {
-      make('path', { d: d, class: 'edge' }, svg);
-    });
+    sheet.clear();
+    sheet.line(outline(hero.offsetWidth, hero.offsetHeight));
   }
 
-  // Draw a path from nothing to full length, at a set duration
-  function drawIn(el, ms) {
-    var len = el.getTotalLength();
-    el.style.strokeDasharray = len;
-    el.style.strokeDashoffset = len;
-    var a = el.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }], { duration: ms, easing: 'linear', fill: 'forwards' });
-    anims.push(a);
-    return a;
-  }
+  // ----- What gets dimensioned -----
 
-  // ----- Dimensions (engineering-drawing style) -----
-
-  function arrowHead(g, x, y, angle) {
-    var s = 6, w = 2.2;
-    var c = Math.cos(angle), n = Math.sin(angle);
-    // tip at (x, y), pointing in the direction of angle
-    var d = 'M ' + x + ' ' + y +
-      ' L ' + (x - s * c - w * n) + ' ' + (y - s * n + w * c) +
-      ' L ' + (x - s * c + w * n) + ' ' + (y - s * n - w * c) + ' Z';
-    make('path', { d: d, class: 'head' }, g);
-  }
-
-  // A straight dimension between two points, with extension lines and arrows at both ends.
-  // (x1, y1) and (x2, y2) are where the dimension line sits; ext lists extension lines to draw.
-  function linearDim(x1, y1, x2, y2, label, ext) {
-    var g = make('g', { class: 'dim temp' }, svg);
-    (ext || []).forEach(function (e) { make('line', { x1: e[0], y1: e[1], x2: e[2], y2: e[3] }, g); });
-    make('line', { x1: x1, y1: y1, x2: x2, y2: y2 }, g);
-    var angle = Math.atan2(y2 - y1, x2 - x1);
-    arrowHead(g, x2, y2, angle);
-    arrowHead(g, x1, y1, angle + Math.PI);
-    var mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
-    // On short dimensions the number sits beside the line instead of on it, so the arrows stay visible
-    if (Math.hypot(x2 - x1, y2 - y1) < 90) {
-      mx += 9 * Math.sin(angle);
-      my -= 9 * Math.cos(angle);
-      if (Math.abs(x2 - x1) < 1) mx = x1 - 9; // vertical: put the number on the left
-    }
-    var deg = angle * 180 / Math.PI;
-    if (deg >= 90 || deg < -90) deg += 180; // keep text readable (vertical text reads bottom to top)
-    var t = make('text', { x: mx, y: my, 'text-anchor': 'middle', 'dominant-baseline': 'central', transform: 'rotate(' + deg + ' ' + mx + ' ' + my + ')' }, g);
-    t.textContent = label;
-    showDim(g);
-    return g;
-  }
-
-  function showDim(g) {
-    g.querySelectorAll('line, path:not(.head), circle').forEach(function (el) { drawIn(el, DIM_MS); });
-    g.querySelectorAll('.head, text').forEach(function (el) {
-      anims.push(el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, delay: DIM_MS * 0.6, fill: 'backwards' }));
-    });
-  }
-
-  function px(n) { return Math.round(n) + 'px'; }
+  var base = 0;                                    // baseline of the name (set when the animation starts)
+  function box(i) { return sheet.glyph(letters[i], base, text[i]); }
+  function lastG() { return text.lastIndexOf('g'); }
 
   // Height of the whole box, outside on the left (only if there's room on screen)
   function dimBoxHeight(w, h) {
     if (hero.getBoundingClientRect().left < 40) return;
-    var x = -22;
-    linearDim(x, 0, x, h, px(h), [[-4, 0, x - 6, 0], [-4, h, x - 6, h]]);
+    sheet.vertical([0, 0], [0, h], -22, px(h));
   }
 
   // Overall width, under the box
   function dimBoxWidth(w, h) {
-    var y = h + 48; // below the corner-radius callout
-    linearDim(0, y, w, y, px(w), [[0, h + 4, 0, y + 6], [w, h + 4, w, y + 6]]);
+    sheet.horizontal([0, h], [w, h], h + 48, px(w));
   }
 
-  // Corner radius callout on the bottom-right corner
-  function dimRadius(w, h) {
-    var r = Math.min(14, h / 4);
-    var px0 = w - r + r * Math.SQRT1_2, py0 = h - r + r * Math.SQRT1_2;
-    var g = make('g', { class: 'dim temp' }, svg);
-    make('path', { d: 'M ' + (px0 - 20) + ' ' + (py0 + 30) + ' L ' + px0 + ' ' + py0 }, g);
-    make('path', { d: 'M ' + (px0 - 20) + ' ' + (py0 + 30) + ' H ' + (px0 - 62) }, g);
-    arrowHead(g, px0, py0, Math.atan2(-30, 20));
-    var t = make('text', { x: px0 - 61, y: py0 + 25 }, g);
-    t.textContent = 'R' + Math.round(r);
-    showDim(g);
+  // Fillet on the bottom-right corner: leader out to the right (down and left on a narrow phone)
+  function dimFillet(w, h) {
+    var r = corner(h);
+    var tip = [w - r + r * Math.SQRT1_2, h - r + r * Math.SQRT1_2];
+    var room = window.innerWidth - hero.getBoundingClientRect().right > 70;
+    sheet.leader(tip, 'R' + Math.round(r), { dx: room ? 1 : -1, dy: 1 });
   }
 
-  // Cap height of the name, plus the gap between the first two letters
-  function dimName() {
-    var base = rel(probe).y;
-    var a = rel(letters[0]), b = rel(letters[1]);
-    var inkA = ink(text[0]), inkB = ink(text[1]);
-    var aLeft = a.x - inkA.left, aRight = a.x + inkA.right;
-    var capTop = base - inkA.up;
-    var x = aLeft - 14;
-    linearDim(x, capTop, x, base, px(inkA.up), [[aLeft - 3, capTop, x - 5, capTop], [aLeft - 3, base, x - 5, base]]);
-
-    var bLeft = b.x - inkB.left, bTop = base - inkB.up;
-    var y = capTop - 12;
-    if (bLeft - aRight > 12) {
-      linearDim(aRight, y, bLeft, y, px(bLeft - aRight), [[aRight, capTop - 3, aRight, y - 5], [bLeft, bTop - 3, bLeft, y - 5]]);
-    }
+  // Gap between the first two letters
+  function dimGap() {
+    var a = box(0), b = box(1);
+    if (b.l - a.r > 12) sheet.horizontal([a.r, a.top], [b.l, b.top], a.top - 12, px(b.l - a.r));
   }
 
-  // Diameter of the G
-  function dimG() {
-    var i = text.indexOf('G');
+  // Full height of the name (top of the capitals to the bottom of the descenders), on the right
+  function dimNameHeight() {
+    var all = letters.map(function (s, i) { return text[i] === ' ' ? null : box(i); }).filter(Boolean);
+    var top = Math.min.apply(null, all.map(function (b) { return b.top; }));
+    var bottom = Math.max.apply(null, all.map(function (b) { return b.bottom; }));
+    var right = all[all.length - 1].r;
+    if (hero.offsetWidth - right < 40) return;
+    sheet.vertical([right, top], [right, bottom], right + 18, px(bottom - top));
+  }
+
+  // Diameter of the round part of the last g: the leader's arrow just touches its edge
+  function dimBowl() {
+    var i = lastG();
     if (i < 0) return;
-    var p = rel(letters[i]), m = ink('G'), base = rel(probe).y;
-    var cx = p.x + (m.right - m.left) / 2;
-    var cy = base - (m.up - m.down) / 2;
-    var d = Math.max(m.left + m.right, m.up + m.down);
-    var r = d / 2 + 4;
-    var g = make('g', { class: 'dim temp' }, svg);
-    make('circle', { cx: cx, cy: cy, r: r, 'stroke-dasharray': '3 3' }, g);
-    var lx = cx + r * Math.SQRT1_2, ly = cy - r * Math.SQRT1_2;
-    make('path', { d: 'M ' + lx + ' ' + ly + ' L ' + (lx + 16) + ' ' + (ly - 18) + ' H ' + (lx + 58) }, g);
-    var t = make('text', { x: lx + 18, y: ly - 23 }, g);
-    t.textContent = '⌀' + Math.round(d);
-    showDim(g);
+    var p = sheet.rel(letters[i]), o = sheet.ink(nameEl, 'o');
+    var d = o.left + o.right;
+    var cx = p.x + (o.right - o.left) / 2, cy = base - o.up / 2;
+    var tip = [cx - (d / 2) * Math.SQRT1_2, cy - (d / 2) * Math.SQRT1_2];
+    sheet.leader(tip, '⌀' + Math.round(d), { dx: -1, dy: -1 });
+  }
+
+  function pick(list) { return list[Math.floor(Math.random() * list.length)]; }
+
+  // Pick the dimensions for every letter, mixed up differently on each visit.
+  // Half of the letters (chosen at random) get both a width and a height; the rest get one.
+  // The A always gets an angled dimension along its long / stroke.
+  // Each letter's choice: { h: 'below' | 'above' | null, v: 'right' | 'left' | null, angled }
+  function pickStyles() {
+    var g = lastG();
+    var idx = [];
+    text.split('').forEach(function (c, i) { if (c !== ' ') idx.push(i); });
+    var both = {};
+    idx.slice().sort(function () { return Math.random() - 0.5; })
+      .slice(0, Math.round(idx.length / 2)).forEach(function (i) { both[i] = true; });
+
+    var styles = [];
+    idx.forEach(function (i) {
+      var b = box(i), s = { h: null, v: null, angled: false };
+      var next = text[i + 1] && text[i + 1] !== ' ' ? box(i + 1).l : Infinity;
+      var prevR = i > 0 && text[i - 1] !== ' ' ? box(i - 1).r : -Infinity;
+      var prev = styles[i - 1];
+      // keep clear of the A-r gap dimension, the g's leader, and the name's height on the right
+      var hOpts = i > 1 && i < g - 1 ? ['below', 'above'] : ['below'];
+      var vOpts = [];
+      if (i < g - 1 && next - b.r > 26) vOpts.push('right');
+      if (i > 1 && i !== g && b.l - prevR > 26 && !(prev && prev.v === 'right')) vOpts.push('left');
+
+      if (i === 0 && text[0] === 'A') {
+        s.angled = true;
+        if (both[i]) s.h = 'below';
+      } else if (both[i] && vOpts.length) {
+        s.h = pick(hOpts);
+        s.v = pick(vOpts);
+      } else if (vOpts.length && Math.random() < 0.5) {
+        s.v = pick(vOpts);
+      } else {
+        s.h = pick(hOpts);
+      }
+      styles[i] = s;
+    });
+    return styles;
+  }
+
+  function dimLetter(i, s, rows) {
+    var b = box(i);
+    if (b.r - b.l < 2) return;
+    var width = String(Math.round(b.r - b.l)), height = String(Math.round(b.bottom - b.top));
+    if (s.h === 'below') sheet.horizontal([b.l, b.bottom], [b.r, b.bottom], rows.below, width);
+    if (s.h === 'above') sheet.horizontal([b.l, b.top], [b.r, b.top], rows.above, width);
+    if (s.v === 'right') sheet.vertical([b.r, b.top], [b.r, b.bottom], b.r + 9, height);
+    if (s.v === 'left') sheet.vertical([b.l, b.top], [b.l, b.bottom], b.l - 9, height);
+    if (s.angled) {
+      // along the long left stroke: from the bottom-left foot up to the top point
+      var foot = [b.l, b.base], apex = [(b.l + b.r) / 2, b.top];
+      sheet.aligned(foot, apex, 16, String(Math.round(Math.hypot(apex[0] - foot[0], apex[1] - foot[1]))));
+    }
   }
 
   // ----- The sequence -----
@@ -211,7 +184,7 @@
     clearTimeout(window.introFallback);
 
     var w = hero.offsetWidth, h = hero.offsetHeight;
-    svg.innerHTML = '';
+    sheet.clear();
 
     // Spread the letters out (without moving anything else on the page)
     var fs = parseFloat(getComputedStyle(nameEl).fontSize);
@@ -230,34 +203,46 @@
       later(function () { s.style.opacity = '1'; }, 60 + i * 70);
     });
     nameEl.style.visibility = 'visible';
+    base = sheet.baseline(nameEl);
 
-    // Lines to draw, and the dimension that appears when each one finishes
-    var base = rel(probe).y;
-    var first = rel(letters[0]), last = rel(letters[letters.length - 1]);
-    var edges = borderPaths(w, h);
-    var lines = [
-      { d: edges[0], cls: 'edge', then: dimG },
-      { d: edges[1], cls: 'edge', then: function () { dimRadius(w, h); } },
-      { d: edges[2], cls: 'edge', then: function () { dimBoxWidth(w, h); } },
-      { d: edges[3], cls: 'edge', then: function () { dimBoxHeight(w, h); } },
-      { d: 'M ' + (first.x - 18) + ' ' + base + ' H ' + (last.right + 18), cls: 'construction temp', then: dimName }
-    ];
+    // The border: lines run both ways from each start point at the same speed and stop where they
+    // meet; each side gets dimensioned the moment it's finished
+    var longestSide = Math.max(w, h);
+    var drawing = sheet.trace(outline(w, h), borderStarts(w, h), { speed: longestSide / LONGEST_LINE_MS });
+    function doneAt(range) {
+      var t = 0;
+      for (var s = range[0]; s <= range[1]; s += 4) t = Math.max(t, drawing.timeAt(s));
+      return Math.max(t, drawing.timeAt(range[1]));
+    }
+    var sides = sideRanges(w, h);
+    later(dimBowl, doneAt(sides.top));
+    later(function () { dimFillet(w, h); }, doneAt(sides.brCorner));
+    later(function () { dimBoxWidth(w, h); }, doneAt(sides.bottom));
+    later(function () { dimBoxHeight(w, h); }, doneAt(sides.left));
 
-    var els = lines.map(function (l) { return make('path', { d: l.d, class: l.cls }, svg); });
-    var longest = Math.max.apply(null, els.map(function (e) { return e.getTotalLength(); }));
-    var speed = longest / LONGEST_LINE_MS; // px per ms, the same for every line
-
-    els.forEach(function (el, i) {
-      var ms = el.getTotalLength() / speed;
-      drawIn(el, ms);
-      later(lines[i].then, ms);
+    // The letters: an invisible sweep moves left to right at its own steady pace, and each letter
+    // gets its dimension the moment the sweep passes it
+    var start = box(0).l - 18;
+    var sweepSpeed = w / SWEEP_MS;
+    var rows = {
+      below: base + Math.max(sheet.ink(nameEl, 'g').down, sheet.ink(nameEl, 'j').down) + 16,
+      above: base - sheet.ink(nameEl, 'A').up - 14
+    };
+    var styles = pickStyles();
+    var sweepEnd = 0;
+    letters.forEach(function (s, i) {
+      if (!styles[i]) return;
+      var t = (box(i).r - start) / sweepSpeed;
+      sweepEnd = Math.max(sweepEnd, t);
+      later(function () { dimLetter(i, styles[i], rows); }, t);
     });
+    later(function () { dimGap(); dimNameHeight(); }, sweepEnd + 120);
 
     // Letters come together, dimensions clear, then nav (top to bottom) and links (left to right)
-    var t = LONGEST_LINE_MS + DIM_MS + 420;
+    var t = Math.max(LONGEST_LINE_MS, sweepEnd + 120) + DIM_MS + HOLD_MS;
     later(function () {
       letters.forEach(function (s) { s.style.transform = 'translateX(0)'; });
-      svg.querySelectorAll('.temp').forEach(function (el) { el.classList.add('gone'); });
+      sheet.fade();
     }, t);
     later(function () {
       staggerIn(hero.querySelectorAll('.nav-row'), 140);
@@ -278,9 +263,7 @@
   function cleanUp() {
     state = 'done';
     timers.forEach(clearTimeout);
-    anims.forEach(function (a) { a.cancel(); });
     timers = [];
-    anims = [];
     drawFinalBorder();
     letters.forEach(function (s) { s.style.transition = 'none'; s.style.transform = ''; s.style.opacity = ''; });
     void nameEl.offsetWidth;
@@ -299,8 +282,29 @@
   }
 
   var skipEvents = ['pointerdown', 'wheel', 'touchmove', 'keydown'];
+  function listen() { skipEvents.forEach(function (e) { window.addEventListener(e, skip, { passive: true }); }); }
   function stopListening() { skipEvents.forEach(function (e) { window.removeEventListener(e, skip); }); }
-  skipEvents.forEach(function (e) { window.addEventListener(e, skip, { passive: true }); });
+  listen();
+
+  // Press r (anywhere on the page) to watch the animation again
+  function replay() {
+    stopListening();
+    timers.forEach(clearTimeout);
+    timers = [];
+    sheet.clear();
+    window.scrollTo({ top: 0, behavior: 'instant' });
+    root.classList.add('intro');
+    nameEl.style.visibility = 'hidden';
+    state = 'waiting';
+    // start on the next tick, so the r key press itself doesn't count as "skip"
+    setTimeout(function () { listen(); play(); }, 30);
+  }
+  document.addEventListener('keydown', function (e) {
+    if (e.key !== 'r' && e.key !== 'R') return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;       // leave Cmd+R (reload) alone
+    if (e.target.closest && e.target.closest('input, textarea, [contenteditable]')) return; // typing in a box
+    replay();
+  });
 
   // Keep the border the right size if the window changes size
   var lastSize = '';
@@ -320,23 +324,5 @@
   } else {
     nameEl.style.visibility = 'hidden';
     Promise.race([document.fonts.ready, new Promise(function (r) { setTimeout(r, 1500); })]).then(play);
-  }
-
-  function addCompareSwitch() {
-    var box = document.createElement('div');
-    box.className = 'compare';
-    [['font', 'mono', 'serif'], ['accent', 'none', 'red']].forEach(function (opt) {
-      var b = document.createElement('button');
-      b.type = 'button';
-      function label() { b.textContent = opt[0] + ': ' + (root.dataset[opt[0]] || opt[1]); }
-      b.addEventListener('click', function (e) {
-        e.stopPropagation();
-        root.dataset[opt[0]] = root.dataset[opt[0]] === opt[2] ? opt[1] : opt[2];
-        label();
-      });
-      label();
-      box.appendChild(b);
-    });
-    document.body.appendChild(box);
   }
 })();
