@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Arjun Garg</title>
+  <meta name="description" content="Arjun Garg, Mechatronics Engineering student at the University of Waterloo.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap">
+  <link rel="stylesheet" href="assets/style.css">
+  <script>
+    // Hide the nav and sections until the loading animation shows them.
+    // Safety net: if the animation script never runs, show everything after 6 seconds.
+    document.documentElement.classList.add('intro');
+    window.introFallback = setTimeout(function () { document.documentElement.classList.remove('intro'); }, 6000);
+  </script>
+</head>
+<body>
+  <main class="page">
+
+    <!-- Header box. The border and the dimensions are drawn by assets/js/intro.js -->
+    <header class="hero" id="top">
+      <svg class="sketch" aria-hidden="true"></svg>
+      <div class="hero-left">
+        <h1 class="name">Arjun Garg</h1>
+        <p class="tagline">Mechatronics Engineering @ UWaterloo</p>
+        <ul class="links">
+          <li><a href="https://www.linkedin.com/in/toarjungarg/" target="_blank" rel="noopener">linkedin</a></li>
+          <li><a href="mailto:a99garg@uwaterloo.ca">email</a></li>
+          <li><a href="https://github.com/toarjungarg" target="_blank" rel="noopener">github</a></li>
+        </ul>
+      </div>
+      <nav class="nav" aria-label="Sections">
+        <div class="nav-row"><a href="#experience">Experience</a><a href="#projects">Projects</a></div>
+        <div class="nav-row"><a href="#resume">Resume</a></div>
+        <div class="nav-row"><a href="#map">Trips Map</a><a href="#songs">Top 10 Songs</a></div>
+      </nav>
+    </header>
+
+    <div class="sections">
+    </div>
+
+    <footer class="footer">&copy; 2026 Arjun Garg</footer>
+  </main>
+
+  <script src="assets/js/intro.js"></script>
+</body>
+</html>

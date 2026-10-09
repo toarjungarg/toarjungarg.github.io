@@ -1,0 +1,170 @@
+/* ---------- Colours and fonts ---------- */
+
+:root {
+  --paper: #f4eee2;       /* cream background */
+  --paper-2: #ebe3d2;     /* slightly darker cream for fills */
+  --ink: #1d1b18;         /* main text and lines */
+  --ink-2: #4c4840;       /* secondary text */
+  --pencil: #8b857a;      /* dimensions and construction lines */
+  --faint: #b9b2a4;       /* faded names and arrows */
+  --accent: var(--ink);   /* links and hover; dark red in the red version */
+  --pin: #b42318;         /* map pins (been there) */
+  --want: #3f7a3a;        /* map pins (want to go), the only green on the site */
+  --tab: #7c3416;         /* hidden section: dark orange-red-brown */
+  --tab-text: #fff8ef;
+
+  --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
+  --serif: "IBM Plex Serif", Georgia, serif;
+  --font: var(--mono);
+  --radius: 14px;
+}
+
+/* Two versions to compare: add ?font=serif or ?accent=red to the address */
+:root[data-font="serif"] { --font: var(--serif); }
+:root[data-accent="red"] { --accent: #8b1e1e; }
+
+/* ---------- Page ---------- */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.6;
+  overflow-x: clip;
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--ink); text-decoration: none; }
+a:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
+a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
+.page {
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* ---------- Header box ---------- */
+
+.hero {
+  position: relative;
+  margin-top: 64px;
+  padding: 40px 44px 36px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 32px;
+}
+
+/* The drawn border and dimensions sit on top of the box */
+.sketch {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.sketch .edge { fill: none; stroke: var(--ink); stroke-width: 1.5; stroke-linecap: round; }
+.sketch .construction { fill: none; stroke: var(--pencil); stroke-width: 1; stroke-dasharray: none; }
+.sketch .dim path, .sketch .dim line, .sketch .dim circle { fill: none; stroke: var(--pencil); stroke-width: 1; }
+.sketch .dim .head { fill: var(--pencil); stroke: none; }
+.sketch .dim text {
+  font-family: var(--mono);
+  font-size: 11px;
+  fill: var(--pencil);
+  paint-order: stroke;
+  stroke: var(--paper);
+  stroke-width: 4px;
+}
+.sketch .temp { transition: opacity 0.4s ease; }
+.sketch .temp.gone { opacity: 0; }
+
+.name {
+  margin: 0;
+  font-size: clamp(40px, 7vw, 68px);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+:root[data-font="serif"] .name { font-weight: 600; letter-spacing: -0.01em; }
+.name .ch {
+  display: inline-block;
+  transition: transform 0.8s cubic-bezier(0.65, 0, 0.35, 1), opacity 0.25s ease;
+}
+
+.tagline { margin: 14px 0 0; color: var(--ink-2); }
+
+.links { display: flex; gap: 22px; margin: 14px 0 0; padding: 0; list-style: none; }
+.links a { color: var(--ink-2); }
+
+.nav { display: flex; flex-direction: column; gap: 10px; padding-top: 10px; min-width: 260px; }
+.nav-row { display: flex; justify-content: space-between; gap: 28px; }
+.nav-row:nth-child(2) { justify-content: center; }
+.nav a { font-size: 15px; }
+
+/* ---------- Loading animation states ---------- */
+
+/* While the intro plays: nav, links, tagline and the rest of the page wait */
+.intro .nav-row,
+.intro .links li,
+.intro .tagline,
+.intro .sections,
+.intro .footer { opacity: 0; }
+
+.nav-row, .links li, .tagline, .sections, .footer {
+  transition: opacity 0.35s ease, transform 0.35s ease;
+}
+.intro .nav-row { transform: translateY(-8px); }
+.intro .links li { transform: translateX(-8px); }
+
+/* ---------- Footer ---------- */
+
+.footer { margin: 120px 0 40px; color: var(--ink-2); font-size: 13px; }
+
+/* ---------- Font / colour comparison switch (only shows on this Mac) ---------- */
+
+.compare {
+  position: fixed;
+  left: 12px;
+  bottom: 12px;
+  z-index: 50;
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  background: var(--paper-2);
+  border: 1px solid var(--faint);
+  border-radius: 8px;
+  font: 12px var(--mono);
+}
+.compare button {
+  font: inherit;
+  padding: 4px 8px;
+  border: 1px solid var(--faint);
+  border-radius: 6px;
+  background: var(--paper);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+/* ---------- Phones ---------- */
+
+@media (max-width: 720px) {
+  .page { padding: 0 16px; }
+  .hero { flex-direction: column; gap: 22px; margin-top: 40px; padding: 28px 22px 24px; }
+  .nav { min-width: 0; width: 100%; padding-top: 0; }
+  .nav-row, .nav-row:nth-child(2) { justify-content: flex-start; }
+  .links { gap: 18px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+}
