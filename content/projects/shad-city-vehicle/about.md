@@ -1,12 +1,11 @@
 ---
-label: "SHAD → PulseRide"
 order: 1
-title: "PulseRide: Three-Wheeled City Vehicle Prototype"
+title: "PulseRide"
 summary: "A mini-prototype of a small electric three-wheeled vehicle designed to stay efficient at downtown speeds."
-period: "Summer 2025"
+deliverable: "Best Prototype"
+start: "Jul 2025"
 tools: ["SolidWorks", "3D printing", "KiCad"]
 link: ""
-award: "Best Prototype, SHAD 2025"
 ---
 
 - Designed PulseRide with my SHAD team: a rickshaw-inspired electric three-wheeler for low-occupancy rides in downtown Vancouver. I was the team engineer and owned the energy efficiency and the CAD.
