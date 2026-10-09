@@ -4,7 +4,6 @@ row: 2
 order: 2
 role: "Competitor"
 organization: "DECA"
-location: "Mississauga, ON"
 start: "2022"
 end: "2026"
 link: ""
