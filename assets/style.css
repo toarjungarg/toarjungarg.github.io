@@ -245,6 +245,64 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
 .resume-box:hover img, .resume-box:focus-visible img { transform: translateY(calc(-100% + 380px)); }
 .resume-box:hover { text-decoration: none; }
 
+/* ---------- Trips Map ---------- */
+
+.title-note { font-size: 14px; font-weight: 400; color: var(--ink-2); margin-left: 6px; }
+
+.map-frame {
+  border: 1.5px solid var(--ink);
+  border-radius: var(--radius);
+  padding: 28px 24px;
+}
+.map-stage { position: relative; }
+.world { display: block; width: 100%; height: auto; overflow: visible; }
+.world path {
+  fill: none;
+  stroke: var(--ink-2);
+  stroke-width: 0.9;
+  stroke-linejoin: round;
+  transition: fill 0.8s ease;
+}
+.map-frame.drawn .world path { fill: var(--paper-2); }
+
+.pin {
+  position: absolute;
+  width: 20px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  transform: translate(-50%, -100%) translateY(-14px);
+  opacity: 0;
+  transition: opacity 0.3s ease, transform 0.35s cubic-bezier(0.3, 1.6, 0.6, 1);
+  transition-delay: calc(var(--n) * 140ms);
+}
+.map-frame.drawn .pin { opacity: 1; transform: translate(-50%, -100%); }
+.pin svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.pin path { fill: var(--pin); stroke: var(--ink); stroke-width: 0.8; }
+.pin circle { fill: var(--paper); }
+.pin.want path { fill: var(--want); }
+.map-frame.drawn .pin:hover, .map-frame.drawn .pin.active { transform: translate(-50%, -100%) scale(1.2); transition-delay: 0s; }
+
+.pin-note {
+  position: absolute;
+  z-index: 5;
+  max-width: 260px;
+  padding: 10px 12px;
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.45;
+  transform: translate(16px, calc(-100% - 6px));
+}
+.pin-note.flip { transform: translate(-16px, calc(-100% - 6px)); }
+.pin-note p { margin: 0; }
+.pin-trip { font-weight: 700; }
+.pin-place { color: var(--ink-2); }
+.pin-text { margin-top: 6px !important; }
+
 /* ---------- Photo galleries ---------- */
 
 .gallery {
@@ -339,6 +397,10 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
   .resume-hint { position: static; transform: none; margin-left: 12px; }
   .resume-box { height: 300px; }
   .resume-box img { width: 82%; }
+  .title-note { display: block; margin: 4px 0 0; }
+  .map-frame { padding: 16px 10px; }
+  .pin { width: 15px; height: 21px; }
+  .pin-note { max-width: 200px; }
   .resume-box:hover img, .resume-box:focus-visible img { transform: translateY(calc(-100% + 300px)); }
 }
 
