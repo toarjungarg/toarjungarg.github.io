@@ -82,6 +82,17 @@ window.Site = (function () {
     if (navigator.vibrate) navigator.vibrate(40);
   }
 
+  // Speed and curve for a JS animation, read from --<name>-time and --<name>-ease in style.css,
+  // so CSS and JS animations change together. Duration is 0 when the visitor asks for less motion.
+  function motion(name) {
+    var css = getComputedStyle(document.documentElement);
+    var t = css.getPropertyValue('--' + name + '-time').trim();
+    return {
+      duration: reduced ? 0 : parseFloat(t) * (/ms$/.test(t) ? 1 : 1000),
+      easing: css.getPropertyValue('--' + name + '-ease').trim() || 'ease'
+    };
+  }
+
   // ----- Gallery: cycles by itself, arrows show on hover -----
 
   function gallery(media, alt) {
@@ -142,5 +153,5 @@ window.Site = (function () {
     return box;
   }
 
-  return { data: data, el: el, dates: dates, shake: shake, gallery: gallery, reduced: reduced };
+  return { data: data, el: el, dates: dates, shake: shake, gallery: gallery, motion: motion, reduced: reduced };
 })();

@@ -16,6 +16,13 @@
   --mono: "JetBrains Mono", ui-monospace, Menlo, monospace;
   --font: var(--mono);
   --radius: 14px;
+
+  /* Motion: one place for speeds and curves. assets/js reads these too (Site.motion) */
+  --slide-time: 0.5s;                         /* experience names and text sliding */
+  --slide-ease: cubic-bezier(0.4, 0, 0.2, 1);
+  --roll-time: 0.75s;                         /* projects rolling along the curve */
+  --roll-follow-time: 0.6s;                   /* the v arrow and section height following them */
+  --roll-ease: cubic-bezier(0.55, 0, 0.3, 1);
 }
 
 
@@ -145,29 +152,28 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
 .xrow { margin-bottom: 64px; }
 .xrow:last-child { margin-bottom: 0; }
 
-.xhead { display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; font-size: 20px; }
-.xhead button { font: inherit; background: none; border: 0; padding: 0; cursor: pointer; color: inherit; }
-.xname { margin: 0; font-size: 20px; line-height: 1.3; transition: opacity 0.18s ease; }
-.xname.current { font-weight: 700; }
+/* Heading:  prev  <  current  >  next   (the sliding is done in assets/js/experience.js) */
+.xhead { position: relative; display: flex; align-items: baseline; flex-wrap: wrap; gap: 4px 10px; font-size: 20px; }
+.xhead button { font: inherit; background: none; border: 0; padding: 0; cursor: pointer; color: inherit; white-space: nowrap; }
+.xname { margin: 0; font-size: 20px; line-height: 1.3; transition: color var(--slide-time) var(--slide-ease); }
+.xname.current { font-weight: 700; cursor: default !important; }
 .xname.side { color: var(--faint); }
 .xname.side:hover { color: var(--ink-2); }
-.xname[hidden] { display: none; }
-.xhead.switching .xname { opacity: 0.3; }
+.xname.ghost { position: absolute; pointer-events: none; } /* copy of a name sliding out of view */
 .xarrow { display: inline-block; padding: 0 2px !important; color: var(--ink) !important; }
 .xarrow:hover { color: var(--accent) !important; }
 .xarrow[aria-disabled="true"] { color: var(--faint) !important; cursor: default; }
 
+.xstage { position: relative; }
+.xstage.moving { overflow-y: clip; } /* while switching, the old text can't spill onto the next row */
 .xbody {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
   gap: 40px;
-  margin-top: 18px;
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  padding-top: 18px;
 }
 .xbody.no-photos { grid-template-columns: minmax(0, 1fr); }
-.xbody.out-left, .xbody.in-left { opacity: 0; transform: translateX(-16px); }
-.xbody.out-right, .xbody.in-right { opacity: 0; transform: translateX(16px); }
-.xbody.in-left, .xbody.in-right { transition: none; }
+.xbody.leaving { position: absolute; top: 0; left: 0; width: 100%; pointer-events: none; }
 .entry-name { margin: 0; font-size: 17px; font-weight: 700; }
 .entry-name a { text-decoration: underline; text-decoration-color: var(--faint); text-underline-offset: 4px; }
 .entry-name a:hover { text-decoration-color: currentColor; }
@@ -183,6 +189,7 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
   overflow-x: visible;
   overflow-y: clip;   /* projects rolling away disappear at the top/bottom edge */
   min-height: 260px;
+  transition: height var(--roll-follow-time) var(--roll-ease); /* grows/shrinks to the project showing */
 }
 
 .chev {
@@ -195,7 +202,7 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
   background: none;
   color: var(--ink);
   cursor: pointer;
-  transition: top 0.6s cubic-bezier(0.55, 0, 0.3, 1), color 0.2s ease;
+  transition: top var(--roll-follow-time) var(--roll-ease), color 0.2s ease;
 }
 .chev svg { display: block; width: 100%; height: 100%; overflow: visible; }
 .chev path { fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
@@ -211,9 +218,9 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
   gap: 40px;
   align-items: start;
   opacity: 0;
-  transition: transform 0.75s cubic-bezier(0.55, 0, 0.3, 1), opacity 0.5s ease;
+  transition: transform var(--roll-time) var(--roll-ease), opacity 0.5s ease;
 }
-.pcard.on { opacity: 1; transition: transform 0.75s cubic-bezier(0.55, 0, 0.3, 1), opacity 0.6s ease 0.15s; }
+.pcard.on { opacity: 1; transition: transform var(--roll-time) var(--roll-ease), opacity 0.6s ease 0.15s; }
 .pcard.no-photos { grid-template-columns: minmax(0, 1fr); }
 .ptools { margin: 14px 0 0; font-size: 13px; color: var(--ink-2); }
 .plink { display: inline-block; margin-top: 10px; }

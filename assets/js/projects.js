@@ -47,9 +47,8 @@
       up.style.width = down.style.width = arrowW + 'px';
       up.style.height = down.style.height = arrowH + 'px';
 
-      var cardH = Math.max.apply(null, cards.map(function (c) { return c.offsetHeight; }));
       top = arrowH + GAP + 8;                       // every project starts just under the ^
-      mount.style.height = (cardH + 2 * (GAP + arrowH) + 16) + 'px';
+      mount.style.transition = 'none';              // no growing animation when the page first lays out
 
       cards.forEach(function (c, n) {
         var h = c.offsetHeight;
@@ -58,15 +57,19 @@
         c.style.transition = 'none';
         place(c, n === i ? 0 : EXIT);
       });
+      fit();
       void mount.offsetWidth;
       cards.forEach(function (c) { c.style.transition = ''; });
-      placeArrows();
+      mount.style.transition = '';
     }
 
-    // The ^ stays under the heading; the v sits just under whichever project is showing
-    function placeArrows() {
+    // The ^ stays under the heading; the v sits just under whichever project is showing,
+    // and the section is only as tall as that project, so a short one leaves no gap below
+    function fit() {
+      var h = cards[i].offsetHeight;
       up.style.top = (top - GAP - arrowH) + 'px';
-      down.style.top = (top + cards[i].offsetHeight + GAP) + 'px';
+      down.style.top = (top + h + GAP) + 'px';
+      mount.style.height = (h + 2 * (GAP + arrowH) + 16) + 'px';
     }
 
     function show(n) {
@@ -92,7 +95,7 @@
       place(to, 0);
       place(from, dir > 0 ? -EXIT : EXIT);
       show(i);
-      placeArrows();
+      fit();
     }
 
     up.addEventListener('click', function () { go(1); });
