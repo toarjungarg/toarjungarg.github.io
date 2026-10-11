@@ -23,6 +23,8 @@
   --roll-time: 0.75s;                         /* projects rolling along the curve */
   --roll-follow-time: 0.6s;                   /* the v arrow and section height following them */
   --roll-ease: cubic-bezier(0.55, 0, 0.3, 1);
+  --close-time: 0.8s;                         /* loading animation: spread-out text closing back up */
+  --close-ease: cubic-bezier(0.65, 0, 0.35, 1);
 
   --trip-panel-w: 320px;                      /* Trips Map: width of the photo panel */
 }
@@ -88,6 +90,7 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
   stroke: var(--paper);
   stroke-width: 4px;
 }
+.sketch.fine .dim text { font-size: 9px; stroke-width: 3px; } /* smaller numbers, for small text */
 .sketch .temp { transition: opacity 0.4s ease; }
 .sketch .temp.gone { opacity: 0; }
 
@@ -99,9 +102,28 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
   letter-spacing: -0.02em;
   white-space: nowrap;
 }
-.name .ch {
+/* Text while the loading animation draws it (assets/js/textdims.js): letters or words in their own
+   spans so they can spread out and close back up */
+.tx-word { white-space: nowrap; }
+.tx-letter, .tx-move {
   display: inline-block;
-  transition: transform 0.8s cubic-bezier(0.65, 0, 0.35, 1), opacity 0.25s ease;
+  transition: transform var(--close-time) var(--close-ease), opacity 0.25s ease;
+}
+/* --tx-dy: how far down the element's first line has moved, for marks drawn by CSS (a bullet's dash)
+   to move with it. tx-still: it jumps there without sliding. */
+.tx-still::before { transition: none !important; }
+
+/* Read by screen readers, not shown */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .tagline { margin: 14px 0 0; color: var(--ink-2); }
@@ -116,18 +138,47 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
 
 /* ---------- Loading animation states ---------- */
 
-/* While the intro plays: nav, links, tagline and the rest of the page wait */
-.intro .nav-row,
-.intro .links li,
-.intro .tagline,
-.intro .sections,
-.intro .footer { opacity: 0; }
+/* Before it starts (fonts and content still loading): an empty page */
+.waiting .name { visibility: hidden; }
+.waiting .sections,
+.waiting .footer { opacity: 0; }
 
-.nav-row, .links li, .tagline, .sections, .footer {
+/* While it draws: the nav, the tagline, the links and the photos wait, and come in at the end.
+   The projects' wheel lets its spread-out lines and arrows show past its top and bottom. */
+.intro .nav-row,
+.intro .tagline,
+.intro .links li,
+.intro .xphotos,
+.intro .resume-box,
+.intro .spotify { opacity: 0; }
+.intro .wheel { overflow-y: visible; }
+
+.nav-row, .links li, .tagline, .sections, .footer, .xphotos, .resume-box, .spotify {
   transition: opacity 0.35s ease, transform 0.35s ease;
 }
 .intro .nav-row { transform: translateY(-8px); }
-.intro .links li { transform: translateX(-8px); }
+.intro .tagline, .intro .links li { transform: translateX(-8px); }
+
+/* "(press r to run animation again)": at the middle of the right edge while the animation draws.
+   It fades as everything closes up, before the photos come in. */
+.replay-hint {
+  position: fixed;
+  top: 50%;
+  right: 16px;
+  z-index: 30;
+  margin: 0;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--paper);
+  color: var(--ink-2);
+  font-size: 13px;
+  transform: translateY(-50%);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s ease;
+}
+.sketching .replay-hint { opacity: 1; }
+@media (hover: none) { .replay-hint { display: none; } } /* phones and tablets have no r key */
 
 /* ---------- Sections ---------- */
 
@@ -137,7 +188,11 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
 
 .bullets { margin: 0; padding: 0; list-style: none; }
 .bullets li { position: relative; padding-left: 20px; margin-bottom: 8px; }
-.bullets li::before { content: "-"; position: absolute; left: 2px; color: var(--ink-2); }
+.bullets li::before {
+  content: "-"; position: absolute; left: 2px; color: var(--ink-2);
+  translate: 0 var(--tx-dy, 0px); /* stays beside its line while the loading animation spreads the lines apart */
+  transition: translate var(--close-time) var(--close-ease);
+}
 
 /* Shake when there's nothing in that direction */
 @keyframes shake {

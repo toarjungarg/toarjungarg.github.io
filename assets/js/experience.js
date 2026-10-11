@@ -35,7 +35,7 @@
     var names = list.map(function (e) {   // one name per experience, moved between the slots
       var b = Site.el('button', 'xname');
       b.type = 'button';
-      b.textContent = e.meta.label;
+      b.textContent = b.dataset.label = e.meta.label;
       b.addEventListener('click', function () {
         if (b.dataset.slot === 'prev') go(-1, left);
         if (b.dataset.slot === 'next') go(1, right);
@@ -77,7 +77,7 @@
       b.classList.toggle('current', on);
       b.classList.toggle('side', !on);
       if (on) { b.setAttribute('aria-current', 'true'); b.removeAttribute('aria-label'); }
-      else { b.removeAttribute('aria-current'); b.setAttribute('aria-label', 'Show ' + b.textContent); }
+      else { b.removeAttribute('aria-current'); b.setAttribute('aria-label', 'Show ' + b.dataset.label); }
       return b;
     }
 

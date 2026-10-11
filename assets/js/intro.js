@@ -1,8 +1,11 @@
-// Loading animation for the header box.
-// The border draws like a pencil sketch (every line at the same speed), each line gets
-// dimensioned as soon as it finishes, every letter of the name gets its own dimension, then
-// the letters slide together and the nav and links fade in. Clicking, scrolling or pressing
-// a key skips it. The drawing itself is done by assets/js/draft.js.
+// Loading animation: the page draws itself like an engineering drawing.
+// The header box's border draws like a pencil sketch (every line at the same speed) and each side
+// gets dimensioned as soon as it's finished. At the same time all the text on the page spreads out
+// and gets dimensioned as an invisible line sweeps across it, then everything closes back up and
+// the nav, the tagline, the linkedin / email / github links and the photos fade in.
+// It plays once when the page loads, and after that only when r is pressed. Scrolling, clicking and
+// keys don't stop it. "(press r to run animation again)" shows at the right while it draws.
+// The text part is assets/js/textdims.js; the drawing tools are assets/js/draft.js.
 (function () {
   'use strict';
 
@@ -10,30 +13,35 @@
   var hero = document.querySelector('.hero');
   var nameEl = hero.querySelector('.name');
 
-  var LONGEST_LINE_MS = 560;  // the longest border line takes this long; shorter ones finish sooner
-  var SWEEP_MS = 850;         // time for the letter sweep to cross the whole box
-  var HOLD_MS = 650;          // how long the finished drawing stays up before the letters close up
-  var DIM_MS = 260;           // how long a dimension takes to draw (matches draft.js)
+  // All the text the animation draws. The nav, the tagline and the contact links are left out on
+  // purpose: they fade in at the end instead. The projects' ^ v are drawings, not text: arrowDims()
+  // does those.
+  var TEXT = [
+    '.section-title',   // section headings, with their (notes)
+    '.resume-hint',     // (click to open)
+    '.xhead',           // Baja SAE < Midnight Sun > SHAD, the < > included
+    '.entry-name', '.entry-sub', '.bullets li', '.ptools', '.plink',
+    '.trip-inner p',    // the Trips Map panel, if one is open
+    '.footer'
+  ].join(', ');
 
-  // ----- Split the name into one span per letter so each can move on its own -----
-  var text = nameEl.textContent.trim();
-  nameEl.setAttribute('aria-label', text);
-  nameEl.textContent = '';
-  var letters = Array.from(text).map(function (c) {
-    var s = document.createElement('span');
-    s.className = 'ch';
-    s.setAttribute('aria-hidden', 'true');
-    s.textContent = c === ' ' ? ' ' : c;
-    nameEl.appendChild(s);
-    return s;
-  });
+  var LONGEST_LINE_MS = 560;  // the longest border line takes this long; shorter ones finish sooner
+  var SWEEP_MS = 850;         // time for the dimension sweep to cross the page
+  var WRITE_SPEED = 1;        // px per ms: the text appears from left to right at this pace
+  var HOLD_MS = 650;          // how long the finished drawing stays up before everything closes up
+  var DIM_MS = 260;           // how long a dimension takes to draw (matches draft.js)
 
   var sheet = Draft.sheet(hero);
   var timers = [];
-  var state = 'waiting'; // waiting -> playing -> done
+  var state = 'waiting';  // waiting -> playing -> done
+  var run = null;         // all the text being drawn (assets/js/textdims.js)
+  var N = null;           // the name's piece of that: its letters, their ink boxes, its baseline
+  var arrows = null;      // sheet for the ^ v dimensions
+  var speed = 1;          // px per ms of the dimension sweep (set when it plays)
 
   function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
   function px(n) { return Math.round(n) + 'px'; }
+  function pick(list) { return list[Math.floor(Math.random() * list.length)]; }
 
   // The rounded box as one closed outline, clockwise from the end of the top-left corner
   function outline(w, h) {
@@ -67,11 +75,7 @@
     sheet.line(outline(hero.offsetWidth, hero.offsetHeight));
   }
 
-  // ----- What gets dimensioned -----
-
-  var base = 0;                                    // baseline of the name (set when the animation starts)
-  function box(i) { return sheet.glyph(letters[i], base, text[i]); }
-  function lastG() { return text.lastIndexOf('g'); }
+  // ----- The header box's dimensions -----
 
   // Height of the whole box, outside on the left (only if there's room on screen)
   function dimBoxHeight(w, h) {
@@ -92,6 +96,11 @@
     sheet.leader(tip, 'R' + Math.round(r), { dx: room ? 1 : -1, dy: 1 });
   }
 
+  // ----- The name's dimensions (the rest of the text gets TextDims' usual ones) -----
+
+  function box(i) { return N.chars[i].box; }
+  function lastG() { return N.text.lastIndexOf('g'); }
+
   // Gap between the first two letters
   function dimGap() {
     var a = box(0), b = box(1);
@@ -100,7 +109,7 @@
 
   // Full height of the name (top of the capitals to the bottom of the descenders), on the right
   function dimNameHeight() {
-    var all = letters.map(function (s, i) { return text[i] === ' ' ? null : box(i); }).filter(Boolean);
+    var all = N.chars.filter(function (c) { return c.box; }).map(function (c) { return c.box; });
     var top = Math.min.apply(null, all.map(function (b) { return b.top; }));
     var bottom = Math.max.apply(null, all.map(function (b) { return b.bottom; }));
     var right = all[all.length - 1].r;
@@ -112,21 +121,19 @@
   function dimBowl() {
     var i = lastG();
     if (i < 0) return;
-    var p = sheet.rel(letters[i]), o = sheet.ink(nameEl, 'o');
+    var p = sheet.rel(N.chars[i].span), o = sheet.ink(nameEl, 'o');
     var d = o.left + o.right;
-    var cx = p.x + (o.right - o.left) / 2, cy = base - o.up / 2;
+    var cx = p.x + (o.right - o.left) / 2, cy = N.base - o.up / 2;
     var tip = [cx - (d / 2) * Math.SQRT1_2, cy - (d / 2) * Math.SQRT1_2];
     sheet.leader(tip, '⌀' + Math.round(d), { dx: -1, dy: -1 });
   }
-
-  function pick(list) { return list[Math.floor(Math.random() * list.length)]; }
 
   // Pick the dimensions for every letter, mixed up differently on each visit.
   // Half of the letters (chosen at random) get both a width and a height; the rest get one.
   // The A always gets an angled dimension along its long / stroke.
   // Each letter's choice: { h: 'below' | 'above' | null, v: 'right' | 'left' | null, angled }
   function pickStyles() {
-    var g = lastG();
+    var text = N.text, g = lastG();
     var idx = [];
     text.split('').forEach(function (c, i) { if (c !== ' ') idx.push(i); });
     var both = {};
@@ -176,82 +183,136 @@
     }
   }
 
+  // Every letter as the sweep passes it, then the gap between the first two letters and the
+  // name's full height once the sweep is past the name
+  function nameDims(p) {
+    var rows = {
+      below: p.base + Math.max(sheet.ink(nameEl, 'g').down, sheet.ink(nameEl, 'j').down) + 16,
+      above: p.base - sheet.ink(nameEl, 'A').up - 14
+    };
+    var jobs = [], end = 0;
+    pickStyles().forEach(function (s, i) {
+      if (!s) return;
+      end = Math.max(end, box(i).r);
+      jobs.push({ x: p.left + box(i).r, draw: function () { dimLetter(i, s, rows); } });
+    });
+    jobs.push({ x: p.left + end + 120 * speed, draw: function () { dimGap(); dimNameHeight(); } });
+    return jobs;
+  }
+
+  // ----- The projects' ^ and v: overall width, height, and the angle of the point -----
+
+  var arrowsMadeRelative = false, arrowWatch = null;
+  function arrowDims(chevs) {
+    if (!chevs.length) return [];
+    var host = chevs[0].closest('.section');
+    arrowsMadeRelative = getComputedStyle(host).position === 'static';
+    if (arrowsMadeRelative) host.style.position = 'relative';
+    arrows = Draft.sheet(host, { fine: true });
+    var left = host.getBoundingClientRect().left;
+
+    // Rolling to another project mid-drawing moves the v: its dimensions fade instead of staying behind
+    var tops = chevs.map(function (b) { return b.style.top; });
+    var drawn = chevs.map(function () { return []; }), moved = [];
+    arrowWatch = new MutationObserver(function () {
+      chevs.forEach(function (b, k) {
+        if (moved[k] || b.style.top === tops[k]) return;
+        moved[k] = true;
+        drawn[k].forEach(function (g) { g.classList.add('gone'); });
+      });
+    });
+    chevs.forEach(function (b) { arrowWatch.observe(b, { attributes: true, attributeFilter: ['style'] }); });
+
+    return chevs.map(function (b, k) {
+      // the arrow is drawn on an 84 x 42 grid: an end, the point, the other end
+      var r = arrows.rel(b), s = (r.right - r.x) / 84;
+      var n = b.querySelector('path').getAttribute('d').match(/[\d.]+/g).map(Number);
+      var p1 = [r.x + n[0] * s, r.y + n[1] * s], tip = [r.x + n[2] * s, r.y + n[3] * s], p2 = [r.x + n[4] * s, r.y + n[5] * s];
+      var side = tip[1] < p1[1] ? -1 : 1; // ^ has its point above its ends, v below
+      var turn = Math.abs(Math.atan2(p2[1] - tip[1], p2[0] - tip[0]) - Math.atan2(p1[1] - tip[1], p1[0] - tip[0]));
+      var deg = Math.round(Math.min(turn, 2 * Math.PI - turn) * 180 / Math.PI);
+      return { x: left + p2[0] + 14, draw: function () {
+        if (moved[k]) return;
+        drawn[k].push(
+          arrows.horizontal(p1, p2, tip[1] + side * 12, String(Math.round(p2[0] - p1[0]))),
+          arrows.vertical(tip, p2, p2[0] + 14, String(Math.round(Math.abs(p2[1] - tip[1])))),
+          arrows.angle(tip, p1, p2, 15, deg + '°')
+        );
+      } };
+    });
+  }
+
+  // Only what's on screen right now (not a hidden project, a closed panel or the hidden section)
+  function showing(el) {
+    return el.getClientRects().length > 0 &&
+      !el.closest('[hidden], [inert], .ghost, .leaving, .pcard:not(.on), .map-wrap:not(.open) .trip-panel, .shh');
+  }
+
   // ----- The sequence -----
 
   function play() {
-    if (state !== 'waiting') return;
     state = 'playing';
     clearTimeout(window.introFallback);
+    root.classList.add('intro', 'sketching');
 
     var w = hero.offsetWidth, h = hero.offsetHeight;
     sheet.clear();
+    speed = w / SWEEP_MS;
 
-    // Spread the letters out (without moving anything else on the page)
-    var fs = parseFloat(getComputedStyle(nameEl).fontSize);
-    var nameW = letters[letters.length - 1].getBoundingClientRect().right - letters[0].getBoundingClientRect().left;
-    var cs = getComputedStyle(hero);
-    var inner = hero.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
-    var gap = Math.max(0, Math.min(fs * 0.45, (inner - nameW) / (letters.length - 1)));
-    letters.forEach(function (s, i) {
-      s.style.transition = 'none';
-      s.style.transform = 'translateX(' + (i * gap) + 'px)';
-      s.style.opacity = '0';
+    // All the text: split up, spread out and hidden. The name has its own dimensions. A project's
+    // name sits right on top of the line under it, so one puts its widths above and the other
+    // below. The projects' ^ v move down with the lines around them as those spread apart.
+    var texts = [nameEl].concat(Array.prototype.filter.call(document.querySelectorAll(TEXT), showing));
+    var chevs = Array.prototype.filter.call(document.querySelectorAll('.chev'), showing);
+    run = TextDims.start(texts, function (el) {
+      if (el === nameEl) return { sheet: sheet, dims: nameDims };
+      if (el.matches('.entry-name')) return { rows: ['above'] };
+      if (el.matches('.entry-sub')) return { rows: ['below'] };
+    }, chevs);
+    N = run.pieces.filter(function (p) { return p.el === nameEl; })[0];
+    root.classList.remove('waiting');
+
+    // An invisible line sweeps from just left of the page to the right at a steady pace: the text
+    // appears as it passes, and each dimension draws the moment the sweep reaches its right end
+    var x0 = hero.getBoundingClientRect().left - 18;
+    run.appear(function (x) { return 60 + Math.max(0, x - x0) / WRITE_SPEED; }, later);
+    var sweepEnd = 0;
+    run.jobs().concat(arrowDims(chevs)).forEach(function (job) {
+      var t = Math.max(0, (job.x - x0) / speed);
+      sweepEnd = Math.max(sweepEnd, t);
+      later(job.draw, t);
     });
-    void nameEl.offsetWidth; // apply that before turning transitions back on
-    letters.forEach(function (s, i) {
-      s.style.transition = '';
-      later(function () { s.style.opacity = '1'; }, 60 + i * 70);
-    });
-    nameEl.style.visibility = 'visible';
-    base = sheet.baseline(nameEl);
 
     // The border: lines run both ways from each start point at the same speed and stop where they
     // meet; each side gets dimensioned the moment it's finished
-    var longestSide = Math.max(w, h);
-    var drawing = sheet.trace(outline(w, h), borderStarts(w, h), { speed: longestSide / LONGEST_LINE_MS });
+    var drawing = sheet.trace(outline(w, h), borderStarts(w, h), { speed: Math.max(w, h) / LONGEST_LINE_MS });
     function doneAt(range) {
       var t = 0;
       for (var s = range[0]; s <= range[1]; s += 4) t = Math.max(t, drawing.timeAt(s));
       return Math.max(t, drawing.timeAt(range[1]));
     }
     var sides = sideRanges(w, h);
-    later(dimBowl, doneAt(sides.top));
+    if (N) later(dimBowl, doneAt(sides.top));
     later(function () { dimFillet(w, h); }, doneAt(sides.brCorner));
     later(function () { dimBoxWidth(w, h); }, doneAt(sides.bottom));
     later(function () { dimBoxHeight(w, h); }, doneAt(sides.left));
 
-    // The letters: an invisible sweep moves left to right at its own steady pace, and each letter
-    // gets its dimension the moment the sweep passes it
-    var start = box(0).l - 18;
-    var sweepSpeed = w / SWEEP_MS;
-    var rows = {
-      below: base + Math.max(sheet.ink(nameEl, 'g').down, sheet.ink(nameEl, 'j').down) + 16,
-      above: base - sheet.ink(nameEl, 'A').up - 14
-    };
-    var styles = pickStyles();
-    var sweepEnd = 0;
-    letters.forEach(function (s, i) {
-      if (!styles[i]) return;
-      var t = (box(i).r - start) / sweepSpeed;
-      sweepEnd = Math.max(sweepEnd, t);
-      later(function () { dimLetter(i, styles[i], rows); }, t);
-    });
-    later(function () { dimGap(); dimNameHeight(); }, sweepEnd + 120);
-
-    // Letters come together, dimensions clear, then nav (top to bottom) and links (left to right)
+    // Everything closes up and the dimensions and the "press r" hint fade, then the nav (top to
+    // bottom), the tagline and links (top to bottom, left to right) and the photos come in
     var t = Math.max(LONGEST_LINE_MS, sweepEnd + 120) + DIM_MS + HOLD_MS;
     later(function () {
-      letters.forEach(function (s) { s.style.transform = 'translateX(0)'; });
+      run.close();
       sheet.fade();
+      if (arrows) arrows.fade();
+      root.classList.remove('sketching');
     }, t);
     later(function () {
       staggerIn(hero.querySelectorAll('.nav-row'), 140);
-      staggerIn(hero.querySelectorAll('.links li'), 120);
-      staggerIn([hero.querySelector('.tagline')], 0);
-      staggerIn(document.querySelectorAll('.sections, .footer'), 0, 300);
+      staggerIn(hero.querySelectorAll('.tagline, .links li'), 120);
+      staggerIn(document.querySelectorAll('.xphotos, .resume-box, .spotify'), 0, 150);
       root.classList.remove('intro');
     }, t + 650);
-    later(cleanUp, t + 1400);
+    later(finish, t + 1400);
   }
 
   function staggerIn(list, step, start) {
@@ -260,44 +321,28 @@
     });
   }
 
-  function cleanUp() {
-    state = 'done';
+  // Stop wherever it is: plain text back, the finished border, everything showing
+  function finish() {
     timers.forEach(clearTimeout);
     timers = [];
+    if (run) { run.restore(); run = null; }
+    N = null;
+    if (arrowWatch) { arrowWatch.disconnect(); arrowWatch = null; }
+    if (arrows) {
+      arrows.remove();
+      if (arrowsMadeRelative) arrows.host.style.position = '';
+      arrows = null;
+    }
     drawFinalBorder();
-    letters.forEach(function (s) { s.style.transition = 'none'; s.style.transform = ''; s.style.opacity = ''; });
-    void nameEl.offsetWidth;
-    letters.forEach(function (s) { s.style.transition = ''; });
-    nameEl.style.visibility = 'visible';
     document.querySelectorAll('[style*="transition-delay"]').forEach(function (el) { el.style.transitionDelay = ''; });
-    root.classList.remove('intro');
-    stopListening();
+    root.classList.remove('intro', 'waiting', 'sketching');
+    state = 'done';
   }
 
-  // Skip straight to the end
-  function skip() {
-    if (state === 'done') return;
-    clearTimeout(window.introFallback);
-    cleanUp();
-  }
-
-  var skipEvents = ['pointerdown', 'wheel', 'touchmove', 'keydown'];
-  function listen() { skipEvents.forEach(function (e) { window.addEventListener(e, skip, { passive: true }); }); }
-  function stopListening() { skipEvents.forEach(function (e) { window.removeEventListener(e, skip); }); }
-  listen();
-
-  // Press r (anywhere on the page) to watch the animation again
+  // Press r (anywhere on the page) to watch it again, from wherever you are on the page
   function replay() {
-    stopListening();
-    timers.forEach(clearTimeout);
-    timers = [];
-    sheet.clear();
-    window.scrollTo({ top: 0, behavior: 'instant' });
-    root.classList.add('intro');
-    nameEl.style.visibility = 'hidden';
-    state = 'waiting';
-    // start on the next tick, so the r key press itself doesn't count as "skip"
-    setTimeout(function () { listen(); play(); }, 30);
+    finish();
+    play();
   }
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'r' && e.key !== 'R') return;
@@ -306,23 +351,27 @@
     replay();
   });
 
-  // Keep the border the right size if the window changes size
+  // Keep the border the right size if the window changes size; mid-drawing, start it again at the new size
   var lastSize = '';
   new ResizeObserver(function () {
     var size = hero.offsetWidth + 'x' + hero.offsetHeight;
     if (size === lastSize) return;
     var first = lastSize === '';
     lastSize = size;
+    if (first) return;
     if (state === 'done') drawFinalBorder();
-    else if (state === 'playing' && !first) skip();
+    else if (state === 'playing') replay();
   }).observe(hero);
 
-  // Start once the fonts have loaded (so the measurements are right), but never wait long
-  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (reduced || location.hash) {
-    skip();
+  // Start once the fonts (so the measurements are right) and the page's content have loaded, but
+  // never wait long. Visitors who asked their device for less motion get the finished page.
+  function wait(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    finish();
   } else {
-    nameEl.style.visibility = 'hidden';
-    Promise.race([document.fonts.ready, new Promise(function (r) { setTimeout(r, 1500); })]).then(play);
+    Promise.all([
+      Promise.race([document.fonts.ready, wait(1500)]),
+      Promise.race([Site.data.catch(function () {}), wait(3000)])
+    ]).then(function () { requestAnimationFrame(play); });
   }
 })();

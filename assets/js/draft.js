@@ -1,17 +1,19 @@
 // Draft: engineering-drawing lines and dimensions, drawn on an SVG layer over any element.
-// Made for the header's loading animation, but written so anything can be dimensioned later
-// (the name art, a heading, a project photo).
+// The loading animation uses it for the header box (assets/js/intro.js) and, through
+// assets/js/textdims.js, for all the other text on the page.
 //
-//   var sheet = Draft.sheet(element);        // SVG layer over the element (give it position: relative)
-//   sheet.line('M 0 0 H 200', { ms: 800 });  // a line that draws itself in 800 ms
+//   var sheet = Draft.sheet(element);                   // SVG layer over the element (give it position: relative)
+//   var sheet = Draft.sheet(element, { fine: true });   // smaller arrowheads and numbers, for small text
+//   sheet.line('M 0 0 H 200', { ms: 800 });             // a line that draws itself in 800 ms
 //   sheet.trace(outline, [[0, 90], [200, 0]], { speed: 1.5 });  // draw a closed outline from several points at once
-//   sheet.horizontal([0, 50], [200, 50], 80, '200px');  // width between two points, dimension line at y = 80
-//   sheet.vertical([0, 0], [0, 60], -20, '60px');       // height between two points, dimension line at x = -20
+//   sheet.horizontal([0, 50], [200, 50], 80, '200');    // width between two points, dimension line at y = 80
+//   sheet.vertical([0, 0], [0, 60], -20, '60');         // height between two points, dimension line at x = -20
 //   sheet.aligned([0, 60], [30, 0], 16, '67');          // along a slanted edge, 16 px off to one side
-//   sheet.leader([40, 40], 'R14', { dx: 1, dy: 1 });     // arrow touching a point, then a landing line, then text
-//   sheet.glyph(span, baseY)                             // ink box of a one-letter <span>
-//   sheet.baseline(textElement)                          // y of a text element's baseline
-//   sheet.fade()  /  sheet.stop()  /  sheet.clear()
+//   sheet.angle([42, 2], [2, 40], [82, 40], 15, '93°');  // the angle where two lines meet (at the first point)
+//   sheet.leader([40, 40], 'R14', { dx: 1, dy: 1 });    // arrow touching a point, then a landing line, then text
+//   sheet.box(span)                                     // ink box and baseline of the text in an inline-block span
+//   sheet.size.row, .beside, .room                      // where widths and heights go next to text, and the room they need
+//   sheet.fade()  /  sheet.stop()  /  sheet.clear()  /  sheet.remove()
 //
 // Every point is in px from the element's top-left corner. Dimensions get the class "dim temp",
 // so sheet.fade() clears them all at once.
@@ -20,6 +22,14 @@ window.Draft = (function () {
 
   var NS = 'http://www.w3.org/2000/svg';
   var DIM_MS = 260; // how long one dimension takes to draw
+  // Sizes of a dimension: arrowhead length and width, the gap before an extension line starts,
+  // how far it runs past the dimension line, how far the number sits outside a short dimension,
+  // and what counts as short. Next to text: a row of widths runs `row` px above or below it, a
+  // height sits `beside` px to its side, and either one takes up `room` px, its numbers included.
+  var SIZES = {
+    normal: { head: 6, headW: 2.2, gap: 3, over: 5, out: 10, short: 70, row: 8, beside: 8, room: 26 },
+    fine: { head: 4, headW: 1.5, gap: 2, over: 3, out: 7, short: 40, row: 6, beside: 5, room: 20 }
+  };
   var ctx = document.createElement('canvas').getContext('2d');
 
   function make(tag, attrs, parent) {
@@ -29,8 +39,23 @@ window.Draft = (function () {
     return e;
   }
 
-  function sheet(host) {
-    var svg = host.querySelector('svg.sketch') || make('svg', { class: 'sketch', 'aria-hidden': 'true' }, host);
+  // Ink measurements of some text in an element's font, plus the font's own ascent and descent
+  function ink(el, text) {
+    var cs = getComputedStyle(el);
+    ctx.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+    var m = ctx.measureText(text);
+    return {
+      left: m.actualBoundingBoxLeft, right: m.actualBoundingBoxRight,
+      up: m.actualBoundingBoxAscent, down: m.actualBoundingBoxDescent,
+      ascent: m.fontBoundingBoxAscent, descent: m.fontBoundingBoxDescent
+    };
+  }
+
+  function sheet(host, o) {
+    o = o || {};
+    var S = o.fine ? SIZES.fine : SIZES.normal;
+    var svg = host.querySelector(':scope > svg.sketch') ||
+      make('svg', { class: 'sketch' + (o.fine ? ' fine' : ''), 'aria-hidden': 'true' }, host);
     var anims = [];
 
     // ----- position helpers -----
@@ -40,36 +65,25 @@ window.Draft = (function () {
       return { x: r.left - h.left, y: r.top - h.top, right: r.right - h.left, bottom: r.bottom - h.top };
     }
 
-    // y of a text element's baseline (a zero-size marker sitting on it)
-    function baseline(textEl) {
-      var probe = textEl.querySelector('.baseline-probe');
-      if (!probe) {
-        probe = document.createElement('span');
-        probe.className = 'baseline-probe';
-        probe.style.cssText = 'display:inline-block;width:0;height:0;vertical-align:baseline';
-        textEl.appendChild(probe);
-      }
-      return rel(probe).y;
-    }
-
-    // Ink measurements of a character in an element's font
-    function ink(el, ch) {
-      var cs = getComputedStyle(el);
-      ctx.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
-      var m = ctx.measureText(ch);
-      return { left: m.actualBoundingBoxLeft, right: m.actualBoundingBoxRight, up: m.actualBoundingBoxAscent, down: m.actualBoundingBoxDescent };
-    }
-
-    // The box the ink of a one-letter span actually covers
-    function glyph(span, base, ch) {
-      var p = rel(span), m = ink(span, ch || span.textContent);
+    // The box the ink of an inline-block span's text (one letter or one word) covers, and its baseline.
+    // An inline-block is exactly one line tall, so the baseline sits half of the room the font
+    // doesn't fill below its top, plus the font's ascent.
+    function box(span, text) {
+      var p = rel(span), m = ink(span, text || span.textContent);
+      var base = p.y + (p.bottom - p.y - m.ascent - m.descent) / 2 + m.ascent;
       return { l: p.x - m.left, r: p.x + m.right, top: base - m.up, bottom: base + m.down, base: base };
     }
 
     // ----- drawing -----
 
+    // A straight line's length is quick to work out here; asking the browser for every one is slow
+    function lengthOf(el) {
+      if (el.tagName !== 'line') return el.getTotalLength();
+      return Math.hypot(el.x2.baseVal.value - el.x1.baseVal.value, el.y2.baseVal.value - el.y1.baseVal.value);
+    }
+
     function drawIn(el, ms) {
-      var len = el.getTotalLength();
+      var len = lengthOf(el);
       el.style.strokeDasharray = len;
       el.style.strokeDashoffset = len;
       var a = el.animate([{ strokeDashoffset: len }, { strokeDashoffset: 0 }], { duration: ms, easing: 'linear', fill: 'forwards' });
@@ -95,13 +109,26 @@ window.Draft = (function () {
 
     // Filled arrowhead with its tip at (x, y), pointing in the direction of angle
     function head(g, x, y, angle) {
-      var s = 6, w = 2.2, c = Math.cos(angle), n = Math.sin(angle);
+      var s = S.head, w = S.headW, c = Math.cos(angle), n = Math.sin(angle);
       make('path', {
         class: 'head',
         d: 'M ' + x + ' ' + y +
           ' L ' + (x - s * c - w * n) + ' ' + (y - s * n + w * c) +
           ' L ' + (x - s * c + w * n) + ' ' + (y - s * n - w * c) + ' Z'
       }, g);
+    }
+
+    // The number on a dimension: on the line, or just outside it when the dimension is short
+    function label(g, mx, my, ang, len, out, text) {
+      if (len < S.short) {
+        var ol = Math.hypot(out[0], out[1]);
+        var ox = ol ? out[0] / ol : Math.sin(ang), oy = ol ? out[1] / ol : -Math.cos(ang);
+        mx += ox * S.out; my += oy * S.out;
+      }
+      var deg = ang * 180 / Math.PI;
+      if (deg >= 90 || deg < -90) deg += 180; // keep text readable (vertical reads bottom to top)
+      var t = make('text', { x: mx, y: my, 'text-anchor': 'middle', 'dominant-baseline': 'central', transform: 'rotate(' + deg + ' ' + mx + ' ' + my + ')' }, g);
+      t.textContent = text;
     }
 
     // Core of every linear dimension: p1, p2 are the points being measured,
@@ -114,24 +141,23 @@ window.Draft = (function () {
         if (d < 1) return;
         var ux = dx / d, uy = dy / d;
         out[0] += ux; out[1] += uy;
-        make('line', { x1: p[0] + ux * 3, y1: p[1] + uy * 3, x2: q[0] + ux * 5, y2: q[1] + uy * 5 }, g);
+        make('line', { x1: p[0] + ux * S.gap, y1: p[1] + uy * S.gap, x2: q[0] + ux * S.over, y2: q[1] + uy * S.over }, g);
       });
-      make('line', { x1: a[0], y1: a[1], x2: b[0], y2: b[1] }, g);
+      var len = Math.hypot(b[0] - a[0], b[1] - a[1]);
       var ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
-      head(g, b[0], b[1], ang);
-      head(g, a[0], a[1], ang + Math.PI);
-
-      // the number sits on the line, or just outside it when the dimension is short
-      var mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
-      if (Math.hypot(b[0] - a[0], b[1] - a[1]) < 70) {
-        var ol = Math.hypot(out[0], out[1]);
-        var ox = ol ? out[0] / ol : Math.sin(ang), oy = ol ? out[1] / ol : -Math.cos(ang);
-        mx += ox * 10; my += oy * 10;
+      if (len < S.head * 2.5) {
+        // Too short for arrowheads between the extension lines: they sit outside, pointing in,
+        // like on a real drawing
+        var c = Math.cos(ang), n = Math.sin(ang), run = S.head + 3;
+        make('line', { x1: a[0] - c * run, y1: a[1] - n * run, x2: b[0] + c * run, y2: b[1] + n * run }, g);
+        head(g, b[0], b[1], ang + Math.PI);
+        head(g, a[0], a[1], ang);
+      } else {
+        make('line', { x1: a[0], y1: a[1], x2: b[0], y2: b[1] }, g);
+        head(g, b[0], b[1], ang);
+        head(g, a[0], a[1], ang + Math.PI);
       }
-      var deg = ang * 180 / Math.PI;
-      if (deg >= 90 || deg < -90) deg += 180; // keep text readable (vertical reads bottom to top)
-      var t = make('text', { x: mx, y: my, 'text-anchor': 'middle', 'dominant-baseline': 'central', transform: 'rotate(' + deg + ' ' + mx + ' ' + my + ')' }, g);
-      t.textContent = text;
+      label(g, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2, ang, len, out, text);
       return reveal(g);
     }
 
@@ -143,6 +169,26 @@ window.Draft = (function () {
       var dx = p2[0] - p1[0], dy = p2[1] - p1[1], len = Math.hypot(dx, dy);
       var nx = dy / len, ny = -dx / len;
       return dim(p1, p2, [p1[0] + nx * offset, p1[1] + ny * offset], [p2[0] + nx * offset, p2[1] + ny * offset], text);
+    }
+
+    // The angle where two lines meet at v, one toward p1 and one toward p2: an arc of radius r
+    // between them with an arrowhead at each end, and the number just past the middle of the arc
+    function angle(v, p1, p2, r, text) {
+      var g = make('g', { class: 'dim temp' }, svg);
+      var a1 = Math.atan2(p1[1] - v[1], p1[0] - v[0]);
+      var d = Math.atan2(p2[1] - v[1], p2[0] - v[0]) - a1;
+      if (d > Math.PI) d -= 2 * Math.PI;
+      if (d < -Math.PI) d += 2 * Math.PI; // the short way round
+      var a2 = a1 + d, dir = d > 0 ? 1 : -1;
+      function at(a, dist) { return [v[0] + dist * Math.cos(a), v[1] + dist * Math.sin(a)]; }
+      var s = at(a1, r), e = at(a2, r);
+      make('path', { d: 'M ' + s.join(' ') + ' A ' + r + ' ' + r + ' 0 0 ' + (d > 0 ? 1 : 0) + ' ' + e.join(' ') }, g);
+      head(g, e[0], e[1], a2 + dir * Math.PI / 2);
+      head(g, s[0], s[1], a1 - dir * Math.PI / 2);
+      var m = at(a1 + d / 2, r + S.out + 3);
+      var t = make('text', { x: m[0], y: m[1], 'text-anchor': 'middle', 'dominant-baseline': 'central' }, g);
+      t.textContent = text;
+      return reveal(g);
     }
 
     // Leader (like a CAD multileader): arrow touching `tip`, an angled line, a flat landing line,
@@ -216,11 +262,12 @@ window.Draft = (function () {
     function fade() { svg.querySelectorAll('.temp').forEach(function (el) { el.classList.add('gone'); }); }
     function stop() { anims.forEach(function (a) { a.cancel(); }); anims = []; }
     function clear() { stop(); svg.innerHTML = ''; }
+    function remove() { stop(); svg.remove(); }
 
     return {
-      svg: svg, rel: rel, baseline: baseline, ink: ink, glyph: glyph,
-      line: line, trace: trace, horizontal: horizontal, vertical: vertical, aligned: aligned, leader: leader,
-      fade: fade, stop: stop, clear: clear
+      host: host, svg: svg, size: S, rel: rel, box: box, ink: ink,
+      line: line, trace: trace, horizontal: horizontal, vertical: vertical, aligned: aligned, angle: angle, leader: leader,
+      fade: fade, stop: stop, clear: clear, remove: remove
     };
   }
 
