@@ -8,4 +8,4 @@ lat: 33.75
 lon: -84.39
 type: "been"
 ---
-ICDC had been my goal since I joined DECA as a freshman, and I made a lot of cool friends and memories on this trip :)
+ICDC had been my goal since I joined DECA as a freshman; I made a lot of cool friends and memories on this trip :)
