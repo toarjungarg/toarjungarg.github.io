@@ -215,7 +215,7 @@
     text.appendChild(ul);
     body.appendChild(text);
 
-    var g = Site.gallery(e.media, m.label);
+    var g = Site.gallery(e.media, m.label, m.focus);
     if (g) {
       var photos = Site.el('div', 'xphotos');
       photos.appendChild(g);

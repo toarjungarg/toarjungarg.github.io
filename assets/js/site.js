@@ -26,8 +26,10 @@ window.Site = (function () {
           meta: e.meta || {},
           bullets: Array.prototype.map.call(doc.querySelectorAll('li'), function (li) { return li.innerHTML.trim(); }),
           paragraphs: Array.prototype.map.call(doc.querySelectorAll('p'), function (p) { return p.innerHTML.trim(); }),
+          // Photos and videos in the entry's photos/ folder, or right next to its .md (trip folders)
           media: raw.files.filter(function (f) {
-            return f.indexOf('/' + dir + 'photos/') === 0 && (IMAGE.test(f) || VIDEO.test(f));
+            return f.indexOf('/' + dir) === 0 && /^(photos\/)?[^/]+$/.test(f.slice(dir.length + 1)) &&
+              (IMAGE.test(f) || VIDEO.test(f));
           }).sort()
         };
       });
@@ -95,7 +97,9 @@ window.Site = (function () {
 
   // ----- Gallery: cycles by itself, arrows show on hover -----
 
-  function gallery(media, alt) {
+  // focus (optional, from an about.md): { "file name": "x% y%" } aims a photo's crop in the box,
+  // e.g. "50% 75%" shows more of the bottom of a tall photo. Without it, the middle shows.
+  function gallery(media, alt, focus) {
     if (!media.length) return null;
     var box = el('div', 'gallery');
     var slides = media.map(function (src, i) {
@@ -113,6 +117,8 @@ window.Site = (function () {
         s.alt = alt + ' (photo ' + (i + 1) + ')';
         s.loading = 'lazy';
       }
+      var name = src.split('/').pop();
+      if (focus && focus[name]) s.style.objectPosition = focus[name];
       box.appendChild(s);
       return s;
     });

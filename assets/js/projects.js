@@ -148,7 +148,7 @@
     }
 
     card.appendChild(text);
-    var g = Site.gallery(e.media, m.title || 'Project');
+    var g = Site.gallery(e.media, m.title || 'Project', m.focus);
     if (g) {
       var photos = Site.el('div', 'xphotos');
       photos.appendChild(g);

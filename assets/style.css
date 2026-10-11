@@ -23,6 +23,8 @@
   --roll-time: 0.75s;                         /* projects rolling along the curve */
   --roll-follow-time: 0.6s;                   /* the v arrow and section height following them */
   --roll-ease: cubic-bezier(0.55, 0, 0.3, 1);
+
+  --trip-panel-w: 320px;                      /* Trips Map: width of the photo panel */
 }
 
 
@@ -299,23 +301,29 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
 .pin.want path { fill: var(--want); }
 .map-frame.drawn .pin:hover, .map-frame.drawn .pin.active { transform: translate(-50%, -100%) scale(1.2); transition-delay: 0s; }
 
-.pin-note {
-  position: absolute;
-  z-index: 5;
-  max-width: 260px;
-  padding: 10px 12px;
-  background: var(--paper);
-  border: 1px solid var(--ink);
-  border-radius: 8px;
-  font-size: 13px;
-  line-height: 1.45;
-  transform: translate(16px, calc(-100% - 6px));
+/* Photo panel: closed it has no width; clicking a pin slides it in on the left and the map narrows.
+   The inside keeps its full width the whole time, so the text never re-wraps while it slides. */
+.map-wrap { display: flex; align-items: flex-start; }
+.map-wrap.measuring, .map-wrap.measuring * { transition: none !important; } /* map.js measuring sizes */
+.map-wrap.resizing { overflow-y: clip; }   /* while the height eases, nothing spills out */
+.map-stage { flex: 1 1 0; min-width: 0; }
+.trip-panel {
+  flex: 0 0 0px;
+  overflow: hidden;
+  transition: flex-basis var(--slide-time) var(--slide-ease), margin-right var(--slide-time) var(--slide-ease);
 }
-.pin-note.flip { transform: translate(-16px, calc(-100% - 6px)); }
-.pin-note p { margin: 0; }
-.pin-trip { font-weight: 700; }
-.pin-place { color: var(--ink-2); }
-.pin-text { margin-top: 6px !important; }
+.map-wrap.open .trip-panel { flex-basis: var(--trip-panel-w); margin-right: 28px; }
+.trip-inner {
+  width: var(--trip-panel-w);
+  opacity: 0;
+  transform: translateX(-24px);
+  transition: opacity var(--slide-time) var(--slide-ease), transform var(--slide-time) var(--slide-ease);
+}
+.map-wrap.open .trip-inner { opacity: 1; transform: none; }
+.trip-inner p { margin: 0; }
+.trip-name { font-weight: 700; }
+.trip-place { color: var(--ink-2); }
+.trip-inner .trip-text { margin: 10px 0 14px; }
 
 /* ---------- Photo galleries ---------- */
 
@@ -430,7 +438,16 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
   .title-note { display: block; margin: 4px 0 0; }
   .map-frame { padding: 16px 10px; }
   .pin { width: 15px; height: 21px; }
-  .pin-note { max-width: 200px; }
+  .map-wrap { flex-direction: column-reverse; }   /* the photo panel opens under the map */
+  .map-stage { flex: none; width: 100%; }
+  .trip-panel {
+    flex: none;
+    width: 100%;
+    max-height: 0;
+    transition: max-height var(--slide-time) var(--slide-ease), margin var(--slide-time) var(--slide-ease);
+  }
+  .map-wrap.open .trip-panel { flex-basis: auto; max-height: 1000px; margin: 20px 0 0; } /* height fits the trip */
+  .trip-inner { width: 100%; transform: translateY(-12px); }
   .resume-box:hover img, .resume-box:focus-visible img { transform: translateY(calc(-100% + 300px)); }
 }
 
