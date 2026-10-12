@@ -27,13 +27,20 @@
 //   rows:  where widths may go: ['below', 'above'] (the usual), or just one of them
 //   dims:  function (piece) returning its own dimensions instead of the usual ones (its letters
 //          then spread out evenly)
+//   still: true to only fade it in: it doesn't spread out or get dimensioned
+//   every: how many letters on the next dimensioned letter can be (the usual [1, 2, 3]; [1] = every letter)
+//   noDims: letters inside elements matching this selector spread out but don't get dimensioned
+//   gap:   widest gap between its spread-out letters, in em (instead of LETTER_GAP)
+//
+// run.appear's when(x, span) also gets the letter or word's span, so some can appear at other times.
 window.TextDims = (function () {
   'use strict';
 
   // ----- The look, in one place -----
   var LETTER_GAP = 0.45;       // widest gap between spread-out letters, in em
   var WORD_GAP = 0.8;          // widest extra gap between spread-out words in longer text, in em
-  var LINE_GAP = 0.3;          // extra space between the lines of a section while they're spread out, in em
+  var LINE_GAP = 0;            // extra space between the lines of a section while they're spread out, in em
+                               // (0: lines only move apart where a row of widths needs the room)
   var LINE_ROOM = 0.5;         // share of the empty space under a section that its lines may spread into
   var EVERY = [1, 2, 3];       // the next letter dimensioned is this many letters on (picked at random each time)
   var HEIGHT_SHARE = 0.5;      // share of those letters that get their height instead of their width, when there's room
@@ -148,13 +155,13 @@ window.TextDims = (function () {
       appear: function (when, later) {
         pieces.forEach(function (p) {
           p.items.forEach(function (it) {
-            later(function () { it.span.style.opacity = ''; }, when(p.left + it.box.l));
+            later(function () { it.span.style.opacity = ''; }, when(p.left + it.box.l, it.span));
           });
         });
       },
       jobs: function () {
         return [].concat.apply([], pieces.map(function (p) {
-          var list = p.o.dims ? p.o.dims(p) : p.oneLine ? letterDims(p) : wordDims(p);
+          var list = p.o.still ? [] : p.o.dims ? p.o.dims(p) : p.oneLine ? letterDims(p) : wordDims(p);
           return list.map(function (job) {
             return { x: job.x, draw: function () { if (!p.settled) job.draw(); } };
           });
@@ -297,15 +304,22 @@ window.TextDims = (function () {
       var items = line.items;
       line.size = parseFloat(getComputedStyle(items[0].span).fontSize);
       reach(p, line);
+      if (p.o.still) {
+        line.picks = [];
+        items.forEach(function (it) { it.dx = 0; });
+        return;
+      }
       var roomL = items[0].rest.left - room.left, roomR = room.right - items[items.length - 1].rest.right;
       var centred = roomL > 6 && Math.abs(roomL - roomR) < 6;
       var space = Math.max(0, centred ? 2 * Math.min(roomL, roomR) : roomR);
       if (p.oneLine) {
         spreadLetters(p, line, space);
       } else {
-        var choices = allowed.filter(function (r) { return !(r === 'above' && last === 'below'); });
-        line.row = last = pick(choices.length ? choices : allowed);
-        line.whole = Math.random() < LINE_SHARE;
+        if (!p.o.dims) { // (text with its own dimensions, or none, skips the usual ones)
+          var choices = allowed.filter(function (r) { return !(r === 'above' && last === 'below'); });
+          line.row = last = pick(choices.length ? choices : allowed);
+          line.whole = Math.random() < LINE_SHARE;
+        }
         spreadWords(line, space);
       }
       if (centred) {
@@ -351,9 +365,11 @@ window.TextDims = (function () {
     var picks = [], used = []; // used[g]: a height sits in gap g, between letters g and g + 1 (g = n - 1: after the last)
     items.forEach(function (it) { it.ink = p.sheet.ink(it.span, it.text); });
 
-    for (var k = p.o.dims ? n : Math.floor(Math.random() * Math.min(3, n)); k < n; k += pick(EVERY)) {
+    var every = p.o.every || EVERY;
+    for (var k = p.o.dims ? n : Math.floor(Math.random() * Math.min(Math.max.apply(null, every), n)); k < n; k += pick(every)) {
       var ink = items[k].ink, last = picks[picks.length - 1];
       if (ink.left + ink.right < 3) continue; // dots and commas are too small
+      if (p.o.noDims && items[k].span.closest(p.o.noDims)) continue;
       var beside = last && last.k === k - 1 && items[k].i === items[k - 1].i + 1; // right after it, same word
       // two widths side by side on the same row would run into each other
       var free = allowed.filter(function (r) { return !(beside && last.row === r); });
@@ -388,7 +404,7 @@ window.TextDims = (function () {
       used[drop.side === 'right' ? drop.k : drop.k - 1] = false;
       picks.splice(picks.indexOf(drop), 1);
     }
-    var gap = LETTER_GAP * line.size;
+    var gap = (p.o.gap || LETTER_GAP) * line.size;
     if (total(gap) > space) { // the widest gap that still fits
       var lo = 0, hi = gap;
       for (var t = 0; t < 16; t++) {
@@ -416,6 +432,7 @@ window.TextDims = (function () {
       g.rows.push(row);
     }
     pieces.forEach(function (p) {
+      if (p.o.still) return; // stays where it is
       var room = p.sheet.size.room;
       p.lines.forEach(function (line) {
         var sides = line.picks ? line.picks.map(function (c) { return c.row; }) : [line.row];

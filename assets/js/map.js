@@ -1,6 +1,7 @@
 // Trips Map: a pencil-style world outline with a pin for every trip folder in content/TripsMap/
 // (each folder: about.md with the pin and my sentence, plus that trip's photos).
-// The outline draws itself the first time the map scrolls into view, then the pins drop in.
+// The outline draws itself when the map scrolls into view, then the pins drop in (again after r
+// replays the loading animation).
 // Clicking a pin slides a panel in from the left with the trip, the place, my sentence and the
 // photos (the same gallery as Experience); the map narrows to make room. On phones the panel
 // opens under the map. Click the same pin again, the empty map, or press Esc to close it.
@@ -135,12 +136,27 @@
     stage.addEventListener('click', function (e) { if (!e.target.closest('.pin')) close(); });
     document.addEventListener('keydown', function (e) { if (e.key === 'Escape' && openPin >= 0) close(); });
 
-    // Draw the outline the first time the map comes into view
+    // Draw the outline when the map comes into view, then drop the pins in. It happens once per
+    // page load, and again whenever the loading animation is replayed with r (assets/js/intro.js
+    // sends "intro-replay"): the map goes back to blank and draws itself the same way.
     var path = svg.querySelector('path');
     if (Site.reduced) { frame.classList.add('drawn'); return; }
     var len = path.getTotalLength();
-    path.style.strokeDasharray = len;
-    path.style.strokeDashoffset = len;
+    var timer = null;
+
+    function reset() {
+      clearTimeout(timer);
+      frame.classList.add('resetting');   // no fading out: straight back to blank
+      frame.classList.remove('drawn');
+      path.style.transition = '';
+      path.style.strokeDasharray = len;
+      path.style.strokeDashoffset = len;
+      void frame.offsetWidth;
+      frame.classList.remove('resetting');
+      window.addEventListener('scroll', check, { passive: true });
+      window.addEventListener('resize', check);
+      timer = setTimeout(check, 300);
+    }
 
     function check() {
       var r = frame.getBoundingClientRect();
@@ -150,11 +166,11 @@
       void path.getBoundingClientRect();
       path.style.transition = 'stroke-dashoffset 0.9s ease-out, fill 0.5s ease';
       path.style.strokeDashoffset = '0';
-      setTimeout(function () { frame.classList.add('drawn'); }, 650);
+      timer = setTimeout(function () { frame.classList.add('drawn'); }, 650);
     }
-    window.addEventListener('scroll', check, { passive: true });
-    window.addEventListener('resize', check);
-    setTimeout(check, 300);
+
+    reset();
+    document.addEventListener('intro-replay', reset);
   }
 
   // The panel for one trip: name, place, my sentence, then the photos

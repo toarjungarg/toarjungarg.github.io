@@ -51,7 +51,11 @@
   function atBottom() {
     return window.scrollY >= document.documentElement.scrollHeight - window.innerHeight - 2;
   }
-  function blocked() { return isOpen || document.documentElement.classList.contains('intro'); }
+  // Shut while the loading animation plays (assets/js/intro.js)
+  function blocked() {
+    var c = document.documentElement.classList;
+    return isOpen || c.contains('intro') || c.contains('animating');
+  }
 
   function height() {
     var vh = window.innerHeight;

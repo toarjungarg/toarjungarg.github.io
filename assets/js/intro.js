@@ -1,10 +1,15 @@
 // Loading animation: the page draws itself like an engineering drawing.
 // The header box's border draws like a pencil sketch (every line at the same speed) and each side
 // gets dimensioned as soon as it's finished. At the same time all the text on the page spreads out
-// and gets dimensioned as an invisible line sweeps across it, then everything closes back up and
-// the nav, the tagline, the linkedin / email / github links and the photos fade in.
-// It plays once when the page loads, and after that only when r is pressed. Scrolling, clicking and
-// keys don't stop it. "(press r to run animation again)" shows at the right while it draws.
+// as an invisible line sweeps across it, and the resume, the Spotify player and the map come in from
+// left to right with it. The name and the section titles get every letter dimensioned, the projects'
+// ^ v get their width, height and angle, and each section's boxes (the text of an experience row or
+// of the project showing, the resume, the player, the map) get their width and height, without the
+// boxes being drawn. The (notes) by the titles fade in in the second half. Then everything closes
+// back up and the nav, the tagline, the linkedin / email / github links and the photos fade in.
+// It plays once when the page loads, and after that only when r is pressed. While it plays, only
+// scrolling works (and r): nothing can be clicked, and the hidden section stays shut.
+// "(press r to run animation again)" shows at the right while it draws.
 // The text part is assets/js/textdims.js; the drawing tools are assets/js/draft.js.
 (function () {
   'use strict';
@@ -13,22 +18,31 @@
   var hero = document.querySelector('.hero');
   var nameEl = hero.querySelector('.name');
 
-  // All the text the animation draws. The nav, the tagline and the contact links are left out on
-  // purpose: they fade in at the end instead. The projects' ^ v are drawings, not text: arrowDims()
-  // does those.
+  // All the text that spreads out and closes up. The nav, the tagline and the contact links are left
+  // out on purpose: they fade in at the end.
   var TEXT = [
-    '.section-title',   // section headings, with their (notes)
+    '.section-title',   // section headings (every letter dimensioned), with their (notes)
     '.resume-hint',     // (click to open)
     '.xhead',           // Baja SAE < Midnight Sun > SHAD, the < > included
     '.entry-name', '.entry-sub', '.bullets li', '.ptools', '.plink',
     '.trip-inner p',    // the Trips Map panel, if one is open
     '.footer'
   ].join(', ');
+  // The (notes): no dimensions, and they fade in in the second half
+  var NOTES = '.title-note, .resume-hint';
+  // Boxes that get their width and height, without the boxes being drawn: around the text in each
+  // experience row and the project showing (as it sits before it stretches)...
+  var TEXT_BOXES = '.xrow, .pcard.on';
+  // ...and around the resume, the Spotify player and the map, which come in from left to right
+  // with the text (the only things that do; the photos come in at the end)
+  var ATTACHED = '.resume-box, .spotify, .map-frame';
 
+  var TITLE_GAP = 1;          // em between a section title's spread-out letters (more than other text, so their numbers are easy to read)
   var LONGEST_LINE_MS = 560;  // the longest border line takes this long; shorter ones finish sooner
   var SWEEP_MS = 850;         // time for the dimension sweep to cross the page
   var WRITE_SPEED = 1;        // px per ms: the text appears from left to right at this pace
-  var HOLD_MS = 650;          // how long the finished drawing stays up before everything closes up
+  var NOTES_SPEED = 3;        // px per ms: the (notes) appear from left to right at this pace
+  var HOLD_MS = 350;          // how long the finished drawing stays up before everything closes up
   var DIM_MS = 260;           // how long a dimension takes to draw (matches draft.js)
 
   var sheet = Draft.sheet(hero);
@@ -36,12 +50,14 @@
   var state = 'waiting';  // waiting -> playing -> done
   var run = null;         // all the text being drawn (assets/js/textdims.js)
   var N = null;           // the name's piece of that: its letters, their ink boxes, its baseline
-  var arrows = null;      // sheet for the ^ v dimensions
+  var boxSheets = [];     // the sheets the boxes' and arrows' dimensions are drawn on, one per section
+  var wipes = [];         // the resume, player and map coming in from left to right
   var speed = 1;          // px per ms of the dimension sweep (set when it plays)
 
   function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
   function px(n) { return Math.round(n) + 'px'; }
   function pick(list) { return list[Math.floor(Math.random() * list.length)]; }
+  function none() { return []; }
 
   // The rounded box as one closed outline, clockwise from the end of the top-left corner
   function outline(w, h) {
@@ -96,7 +112,7 @@
     sheet.leader(tip, 'R' + Math.round(r), { dx: room ? 1 : -1, dy: 1 });
   }
 
-  // ----- The name's dimensions (the rest of the text gets TextDims' usual ones) -----
+  // ----- The name's dimensions (the section titles get TextDims' usual ones) -----
 
   function box(i) { return N.chars[i].box; }
   function lastG() { return N.text.lastIndexOf('g'); }
@@ -200,52 +216,99 @@
     return jobs;
   }
 
-  // ----- The projects' ^ and v: overall width, height, and the angle of the point -----
+  // ----- The sections' boxes and the projects' arrows -----
 
-  var arrowsMadeRelative = false, arrowWatch = null;
-  function arrowDims(chevs) {
-    if (!chevs.length) return [];
-    var host = chevs[0].closest('.section');
-    arrowsMadeRelative = getComputedStyle(host).position === 'static';
-    if (arrowsMadeRelative) host.style.position = 'relative';
-    arrows = Draft.sheet(host, { fine: true });
-    var left = host.getBoundingClientRect().left;
+  // One sheet over each whole section to draw them on (so a project's aren't cut off by the wheel)
+  function sectionSheet(el) {
+    var host = el.closest('.section') || el.parentElement;
+    var own = boxSheets.filter(function (b) { return b.sheet.host === host; })[0];
+    if (!own) {
+      own = { made: getComputedStyle(host).position === 'static' };
+      if (own.made) host.style.position = 'relative';
+      own.sheet = Draft.sheet(host);
+      boxSheets.push(own);
+    }
+    return own.sheet;
+  }
 
-    // Rolling to another project mid-drawing moves the v: its dimensions fade instead of staying behind
-    var tops = chevs.map(function (b) { return b.style.top; });
-    var drawn = chevs.map(function () { return []; }), moved = [];
-    arrowWatch = new MutationObserver(function () {
-      chevs.forEach(function (b, k) {
-        if (moved[k] || b.style.top === tops[k]) return;
-        moved[k] = true;
-        drawn[k].forEach(function (g) { g.classList.add('gone'); });
+  // A box's overall width under it, and its height on its left (only if there's room on screen).
+  // If one of the projects' arrows sits right under the box, the width goes over it instead.
+  // text: the box around the text inside, where it sits before it stretches
+  function boxDims(el, text) {
+    var S = sectionSheet(el), h = S.host.getBoundingClientRect(), b = el.getBoundingClientRect();
+    if (text) {
+      b = { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity };
+      run.pieces.forEach(function (p) {
+        if (!el.contains(p.el)) return;
+        p.items.forEach(function (it) {
+          b.left = Math.min(b.left, it.rest.left);
+          b.top = Math.min(b.top, it.rest.top);
+          b.right = Math.max(b.right, it.rest.right);
+          b.bottom = Math.max(b.bottom, it.rest.bottom);
+        });
       });
+      if (b.left === Infinity) return [];
+    }
+    var r = { x: b.left - h.left, y: b.top - h.top, right: b.right - h.left, bottom: b.bottom - h.top };
+    var under = Array.prototype.every.call(S.host.querySelectorAll('.chev'), function (c) {
+      var a = S.rel(c);
+      return a.x > r.right || a.right < r.x || a.y > r.bottom + 36 || a.bottom < r.bottom;
     });
-    chevs.forEach(function (b) { arrowWatch.observe(b, { attributes: true, attributeFilter: ['style'] }); });
+    var edge = under ? r.bottom : r.y, y = under ? r.bottom + 22 : r.y - 16;
+    // a text box's dimensions stay up until its text has closed back into them
+    function stay(g) { if (text) g.classList.add('late'); }
+    var jobs = [{ x: h.left + r.right, draw: function () {
+      stay(S.horizontal([r.x, edge], [r.right, edge], y, px(r.right - r.x)));
+    } }];
+    if (b.left >= 40) {
+      jobs.push({ x: h.left + r.x, draw: function () {
+        stay(S.vertical([r.x, r.y], [r.x, r.bottom], r.x - 22, px(r.bottom - r.y)));
+      } });
+    }
+    return jobs;
+  }
 
-    return chevs.map(function (b, k) {
+  // The projects' ^ and v: overall width (over the ^, under the v), height, and the angle of the point
+  function arrowDims(chevs) {
+    return chevs.map(function (b) {
+      var S = sectionSheet(b), left = S.host.getBoundingClientRect().left;
       // the arrow is drawn on an 84 x 42 grid: an end, the point, the other end
-      var r = arrows.rel(b), s = (r.right - r.x) / 84;
+      var r = S.rel(b), s = (r.right - r.x) / 84;
       var n = b.querySelector('path').getAttribute('d').match(/[\d.]+/g).map(Number);
       var p1 = [r.x + n[0] * s, r.y + n[1] * s], tip = [r.x + n[2] * s, r.y + n[3] * s], p2 = [r.x + n[4] * s, r.y + n[5] * s];
       var side = tip[1] < p1[1] ? -1 : 1; // ^ has its point above its ends, v below
       var turn = Math.abs(Math.atan2(p2[1] - tip[1], p2[0] - tip[0]) - Math.atan2(p1[1] - tip[1], p1[0] - tip[0]));
       var deg = Math.round(Math.min(turn, 2 * Math.PI - turn) * 180 / Math.PI);
       return { x: left + p2[0] + 14, draw: function () {
-        if (moved[k]) return;
-        drawn[k].push(
-          arrows.horizontal(p1, p2, tip[1] + side * 12, String(Math.round(p2[0] - p1[0]))),
-          arrows.vertical(tip, p2, p2[0] + 14, String(Math.round(Math.abs(p2[1] - tip[1])))),
-          arrows.angle(tip, p1, p2, 15, deg + '°')
-        );
+        S.horizontal(p1, p2, tip[1] + side * 12, String(Math.round(p2[0] - p1[0])));
+        S.vertical(tip, p2, p2[0] + 14, String(Math.round(Math.abs(p2[1] - tip[1]))));
+        S.angle(tip, p1, p2, 15, deg + '°');
       } };
     });
+  }
+
+  // The resume, the Spotify player and the map come in from left to right with the text: their left
+  // edge as the sweep reaches it, and the rest uncovered at the sweep's pace
+  function wipeIn(el, at) {
+    var r = el.getBoundingClientRect();
+    wipes.push(el.animate([
+      { clipPath: 'inset(0 100% 0 0)', opacity: 0 },
+      { opacity: 1, offset: 0.2 },
+      { clipPath: 'inset(0 0% 0 0)', opacity: 1 }
+    ], { duration: r.width / WRITE_SPEED, delay: at(r.left), easing: 'linear', fill: 'backwards' }));
   }
 
   // Only what's on screen right now (not a hidden project, a closed panel or the hidden section)
   function showing(el) {
     return el.getClientRects().length > 0 &&
       !el.closest('[hidden], [inert], .ghost, .leaving, .pcard:not(.on), .map-wrap:not(.open) .trip-panel, .shh');
+  }
+
+  // While it plays only scrolling works: nothing on the page or in the hidden section can be
+  // clicked, focused or typed into (r still replays, and hidden.js keeps the hidden section shut)
+  function freeze(on) {
+    root.classList.toggle('animating', on);
+    document.querySelectorAll('.page, .shh').forEach(function (el) { el.inert = on; });
   }
 
   // ----- The sequence -----
@@ -259,29 +322,39 @@
     sheet.clear();
     speed = w / SWEEP_MS;
 
-    // All the text: split up, spread out and hidden. The name has its own dimensions. A project's
-    // name sits right on top of the line under it, so one puts its widths above and the other
-    // below. The projects' ^ v move down with the lines around them as those spread apart.
-    var texts = [nameEl].concat(Array.prototype.filter.call(document.querySelectorAll(TEXT), showing));
-    var chevs = Array.prototype.filter.call(document.querySelectorAll('.chev'), showing);
+    // All the text: split up, spread out and hidden. The name has its own dimensions, the section
+    // titles spread out more and get every letter dimensioned (not their notes), and the rest only
+    // spreads out.
+    function all(selector) { return Array.prototype.filter.call(document.querySelectorAll(selector), showing); }
+    var texts = [nameEl].concat(all(TEXT)), textBoxes = all(TEXT_BOXES), attached = all(ATTACHED), chevs = all('.chev');
     run = TextDims.start(texts, function (el) {
       if (el === nameEl) return { sheet: sheet, dims: nameDims };
-      if (el.matches('.entry-name')) return { rows: ['above'] };
-      if (el.matches('.entry-sub')) return { rows: ['below'] };
-    }, chevs);
+      if (el.matches('.section-title')) return { every: [1], noDims: NOTES, gap: TITLE_GAP };
+      return { dims: none };
+    });
     N = run.pieces.filter(function (p) { return p.el === nameEl; })[0];
     root.classList.remove('waiting');
 
     // An invisible line sweeps from just left of the page to the right at a steady pace: the text
-    // appears as it passes, and each dimension draws the moment the sweep reaches its right end
+    // (and the resume, player and map) appears as it passes, and each dimension draws the moment
+    // the sweep reaches its right end
     var x0 = hero.getBoundingClientRect().left - 18;
-    run.appear(function (x) { return 60 + Math.max(0, x - x0) / WRITE_SPEED; }, later);
+    function writeAt(x) { return 60 + Math.max(0, x - x0) / WRITE_SPEED; }
+    var jobs = run.jobs().concat(arrowDims(chevs));
+    textBoxes.forEach(function (el) { jobs = jobs.concat(boxDims(el, true)); });
+    attached.forEach(function (el) { jobs = jobs.concat(boxDims(el, false)); wipeIn(el, writeAt); });
     var sweepEnd = 0;
-    run.jobs().concat(arrowDims(chevs)).forEach(function (job) {
+    jobs.forEach(function (job) {
       var t = Math.max(0, (job.x - x0) / speed);
       sweepEnd = Math.max(sweepEnd, t);
       later(job.draw, t);
     });
+    var t = Math.max(LONGEST_LINE_MS, sweepEnd + 120) + DIM_MS + HOLD_MS;
+    // The (notes) start fading in once the drawing is finished, a little faster
+    run.appear(function (x, span) {
+      return span.closest(NOTES) ? t - HOLD_MS + Math.max(0, x - x0) / NOTES_SPEED : writeAt(x);
+    }, later);
+    freeze(true);
 
     // The border: lines run both ways from each start point at the same speed and stop where they
     // meet; each side gets dimensioned the moment it's finished
@@ -297,19 +370,22 @@
     later(function () { dimBoxWidth(w, h); }, doneAt(sides.bottom));
     later(function () { dimBoxHeight(w, h); }, doneAt(sides.left));
 
-    // Everything closes up and the dimensions and the "press r" hint fade, then the nav (top to
-    // bottom), the tagline and links (top to bottom, left to right) and the photos come in
-    var t = Math.max(LONGEST_LINE_MS, sweepEnd + 120) + DIM_MS + HOLD_MS;
+    // Everything closes up and the dimensions and the "press r" hint fade (the text boxes' once the
+    // text has finished closing), then the nav (top to bottom), the tagline and links (top to
+    // bottom, left to right) and the photos come in
     later(function () {
       run.close();
       sheet.fade();
-      if (arrows) arrows.fade();
+      boxSheets.forEach(function (b) { b.sheet.fade('.late'); });
       root.classList.remove('sketching');
     }, t);
     later(function () {
+      boxSheets.forEach(function (b) { b.sheet.fade(); });
+    }, t + Site.motion('close').duration);
+    later(function () {
       staggerIn(hero.querySelectorAll('.nav-row'), 140);
       staggerIn(hero.querySelectorAll('.tagline, .links li'), 120);
-      staggerIn(document.querySelectorAll('.xphotos, .resume-box, .spotify'), 0, 150);
+      staggerIn(document.querySelectorAll('.xphotos'), 0, 150);
       root.classList.remove('intro');
     }, t + 650);
     later(finish, t + 1400);
@@ -321,27 +397,31 @@
     });
   }
 
-  // Stop wherever it is: plain text back, the finished border, everything showing
+  // Stop wherever it is: plain text back, the finished border, everything showing and working
   function finish() {
     timers.forEach(clearTimeout);
     timers = [];
     if (run) { run.restore(); run = null; }
     N = null;
-    if (arrowWatch) { arrowWatch.disconnect(); arrowWatch = null; }
-    if (arrows) {
-      arrows.remove();
-      if (arrowsMadeRelative) arrows.host.style.position = '';
-      arrows = null;
-    }
+    boxSheets.forEach(function (b) {
+      b.sheet.remove();
+      if (b.made) b.sheet.host.style.position = '';
+    });
+    boxSheets = [];
+    wipes.forEach(function (a) { a.cancel(); });
+    wipes = [];
     drawFinalBorder();
     document.querySelectorAll('[style*="transition-delay"]').forEach(function (el) { el.style.transitionDelay = ''; });
     root.classList.remove('intro', 'waiting', 'sketching');
+    freeze(false);
     state = 'done';
   }
 
-  // Press r (anywhere on the page) to watch it again, from wherever you are on the page
+  // Press r (anywhere on the page) to watch it again, from wherever you are on the page. Anything
+  // with its own entrance (the map drawing its outline and dropping its pins) plays that again too.
   function replay() {
     finish();
+    document.dispatchEvent(new Event('intro-replay'));
     play();
   }
   document.addEventListener('keydown', function (e) {

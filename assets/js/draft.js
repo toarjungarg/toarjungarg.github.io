@@ -16,7 +16,8 @@
 //   sheet.fade()  /  sheet.stop()  /  sheet.clear()  /  sheet.remove()
 //
 // Every point is in px from the element's top-left corner. Dimensions get the class "dim temp",
-// so sheet.fade() clears them all at once.
+// so sheet.fade() clears them all at once. sheet.fade('.late') leaves out the ones with that class,
+// for a later sheet.fade().
 window.Draft = (function () {
   'use strict';
 
@@ -259,7 +260,9 @@ window.Draft = (function () {
 
     // ----- housekeeping -----
 
-    function fade() { svg.querySelectorAll('.temp').forEach(function (el) { el.classList.add('gone'); }); }
+    function fade(keep) {
+      svg.querySelectorAll('.temp' + (keep ? ':not(' + keep + ')' : '')).forEach(function (el) { el.classList.add('gone'); });
+    }
     function stop() { anims.forEach(function (a) { a.cancel(); }); anims = []; }
     function clear() { stop(); svg.innerHTML = ''; }
     function remove() { stop(); svg.remove(); }

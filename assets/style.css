@@ -144,16 +144,13 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
 .waiting .footer { opacity: 0; }
 
 /* While it draws: the nav, the tagline, the links and the photos wait, and come in at the end.
-   The projects' wheel lets its spread-out lines and arrows show past its top and bottom. */
+   (The resume, the Spotify player and the map come in with the text: assets/js/intro.js.) */
 .intro .nav-row,
 .intro .tagline,
 .intro .links li,
-.intro .xphotos,
-.intro .resume-box,
-.intro .spotify { opacity: 0; }
-.intro .wheel { overflow-y: visible; }
+.intro .xphotos { opacity: 0; }
 
-.nav-row, .links li, .tagline, .sections, .footer, .xphotos, .resume-box, .spotify {
+.nav-row, .links li, .tagline, .sections, .footer, .xphotos {
   transition: opacity 0.35s ease, transform 0.35s ease;
 }
 .intro .nav-row { transform: translateY(-8px); }
@@ -335,6 +332,7 @@ a:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outlin
   transition: fill 0.5s ease;
 }
 .map-frame.drawn .world path { fill: var(--paper-2); }
+.map-frame.resetting, .map-frame.resetting * { transition: none !important; } /* back to blank for a replay (assets/js/map.js) */
 
 .pin {
   position: absolute;
