@@ -2,7 +2,7 @@
 label: "Baja SAE"
 row: 1
 order: 1
-role: "Electrical Team Member"
+role: "Electrical Subteam Member"
 organization: "Baja SAE Team"
 start: "Sep 2026"
 end: "Present"
