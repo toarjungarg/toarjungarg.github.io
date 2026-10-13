@@ -24,7 +24,7 @@
     '.section-title',   // section headings (every letter dimensioned), with their (notes)
     '.resume-hint',     // (click to open)
     '.xhead',           // Baja SAE < Midnight Sun > SHAD, the < > included
-    '.entry-name', '.entry-sub', '.bullets li', '.ptools', '.plink',
+    '.entry-name', '.entry-org', '.entry-sub', '.bullets li', '.ptools', '.plink',
     '.trip-inner p',    // the Trips Map panel, if one is open
     '.footer'
   ].join(', ');
@@ -33,15 +33,15 @@
   // Boxes that get their width and height, without the boxes being drawn: around the text in each
   // experience row and the project showing (as it sits before it stretches)...
   var TEXT_BOXES = '.xrow, .pcard.on';
-  // ...and around the resume, the Spotify player and the map, which come in from left to right
-  // with the text (the only things that do; the photos come in at the end)
-  var ATTACHED = '.resume-box, .spotify, .map-frame';
+  // ...and around the resume, the songs (or the Spotify player) and the map, which come in from
+  // left to right with the text (the only things that do; the photos come in at the end)
+  var ATTACHED = '.resume-box, .song-grid, .spotify, .map-frame';
 
   var TITLE_GAP = 1;          // em between a section title's spread-out letters (more than other text, so their numbers are easy to read)
   var LONGEST_LINE_MS = 560;  // the longest border line takes this long; shorter ones finish sooner
   var SWEEP_MS = 850;         // time for the dimension sweep to cross the page
-  var WRITE_SPEED = 1;        // px per ms: the text appears from left to right at this pace
-  var NOTES_SPEED = 3;        // px per ms: the (notes) appear from left to right at this pace
+  var WRITE_SPEED = 1;        // px per ms on the Mac (faster on a wide window, so it takes the same time): the text appears from left to right at this pace
+  var NOTES_SPEED = 3;        // px per ms on the Mac: the (notes) appear from left to right at this pace
   var HOLD_MS = 350;          // how long the finished drawing stays up before everything closes up
   var DIM_MS = 260;           // how long a dimension takes to draw (matches draft.js)
 
@@ -56,6 +56,8 @@
 
   function later(fn, ms) { timers.push(setTimeout(fn, ms)); }
   function px(n) { return Math.round(n) + 'px'; }
+  // n px on the Mac, grown with the rest of the site on a wide window (assets/js/draft.js)
+  function u(n) { return n * Draft.scale(); }
   function pick(list) { return list[Math.floor(Math.random() * list.length)]; }
   function none() { return []; }
 
@@ -66,11 +68,20 @@
     return 'M ' + r + ' 0 H ' + (w - r) + arc + w + ' ' + r + ' V ' + (h - r) + arc + (w - r) + ' ' + h +
       ' H ' + r + arc + '0 ' + (h - r) + ' V ' + r + arc + r + ' 0 Z';
   }
-  function corner(h) { return Math.min(14, h / 4); }
+  function corner(h) { return Math.min(u(14), h / 4); }
 
   // Where the border starts drawing from. Any points work (each snaps to the nearest spot on the
-  // border), so later these can follow the cursor. Now: the bottom-left and top-right corners.
+  // border). On a replay with r: the spot nearest the cursor and the spot opposite it (through the
+  // middle of the box). Otherwise (first load, or the cursor right in the middle): the bottom-left
+  // and top-right corners.
+  var cursor = null;    // where the mouse last was, on the screen
+  var fromCursor = false;
+  document.addEventListener('mousemove', function (e) { cursor = [e.clientX, e.clientY]; }, { passive: true });
   function borderStarts(w, h) {
+    if (fromCursor && cursor) {
+      var r = hero.getBoundingClientRect(), x = cursor[0] - r.left, y = cursor[1] - r.top;
+      if (Math.hypot(x - w / 2, y - h / 2) > u(20)) return [[x, y], [w - x, h - y]];
+    }
     return [[0, h], [w, 0]];
   }
 
@@ -95,20 +106,20 @@
 
   // Height of the whole box, outside on the left (only if there's room on screen)
   function dimBoxHeight(w, h) {
-    if (hero.getBoundingClientRect().left < 40) return;
-    sheet.vertical([0, 0], [0, h], -22, px(h));
+    if (hero.getBoundingClientRect().left < u(40)) return;
+    sheet.vertical([0, 0], [0, h], -u(22), px(h));
   }
 
   // Overall width, under the box
   function dimBoxWidth(w, h) {
-    sheet.horizontal([0, h], [w, h], h + 48, px(w));
+    sheet.horizontal([0, h], [w, h], h + u(48), px(w));
   }
 
   // Fillet on the bottom-right corner: leader out to the right (down and left on a narrow phone)
   function dimFillet(w, h) {
     var r = corner(h);
     var tip = [w - r + r * Math.SQRT1_2, h - r + r * Math.SQRT1_2];
-    var room = window.innerWidth - hero.getBoundingClientRect().right > 70;
+    var room = window.innerWidth - hero.getBoundingClientRect().right > u(70);
     sheet.leader(tip, 'R' + Math.round(r), { dx: room ? 1 : -1, dy: 1 });
   }
 
@@ -120,7 +131,7 @@
   // Gap between the first two letters
   function dimGap() {
     var a = box(0), b = box(1);
-    if (b.l - a.r > 12) sheet.horizontal([a.r, a.top], [b.l, b.top], a.top - 12, px(b.l - a.r));
+    if (b.l - a.r > u(12)) sheet.horizontal([a.r, a.top], [b.l, b.top], a.top - u(12), px(b.l - a.r));
   }
 
   // Full height of the name (top of the capitals to the bottom of the descenders), on the right
@@ -129,8 +140,8 @@
     var top = Math.min.apply(null, all.map(function (b) { return b.top; }));
     var bottom = Math.max.apply(null, all.map(function (b) { return b.bottom; }));
     var right = all[all.length - 1].r;
-    if (hero.offsetWidth - right < 40) return;
-    sheet.vertical([right, top], [right, bottom], right + 18, px(bottom - top));
+    if (hero.offsetWidth - right < u(40)) return;
+    sheet.vertical([right, top], [right, bottom], right + u(18), px(bottom - top));
   }
 
   // Diameter of the round part of the last g: the leader's arrow just touches its edge
@@ -165,8 +176,8 @@
       // keep clear of the A-r gap dimension, the g's leader, and the name's height on the right
       var hOpts = i > 1 && i < g - 1 ? ['below', 'above'] : ['below'];
       var vOpts = [];
-      if (i < g - 1 && next - b.r > 26) vOpts.push('right');
-      if (i > 1 && i !== g && b.l - prevR > 26 && !(prev && prev.v === 'right')) vOpts.push('left');
+      if (i < g - 1 && next - b.r > u(26)) vOpts.push('right');
+      if (i > 1 && i !== g && b.l - prevR > u(26) && !(prev && prev.v === 'right')) vOpts.push('left');
 
       if (i === 0 && text[0] === 'A') {
         s.angled = true;
@@ -186,16 +197,16 @@
 
   function dimLetter(i, s, rows) {
     var b = box(i);
-    if (b.r - b.l < 2) return;
+    if (b.r - b.l < u(2)) return;
     var width = String(Math.round(b.r - b.l)), height = String(Math.round(b.bottom - b.top));
     if (s.h === 'below') sheet.horizontal([b.l, b.bottom], [b.r, b.bottom], rows.below, width);
     if (s.h === 'above') sheet.horizontal([b.l, b.top], [b.r, b.top], rows.above, width);
-    if (s.v === 'right') sheet.vertical([b.r, b.top], [b.r, b.bottom], b.r + 9, height);
-    if (s.v === 'left') sheet.vertical([b.l, b.top], [b.l, b.bottom], b.l - 9, height);
+    if (s.v === 'right') sheet.vertical([b.r, b.top], [b.r, b.bottom], b.r + u(9), height);
+    if (s.v === 'left') sheet.vertical([b.l, b.top], [b.l, b.bottom], b.l - u(9), height);
     if (s.angled) {
       // along the long left stroke: from the bottom-left foot up to the top point
       var foot = [b.l, b.base], apex = [(b.l + b.r) / 2, b.top];
-      sheet.aligned(foot, apex, 16, String(Math.round(Math.hypot(apex[0] - foot[0], apex[1] - foot[1]))));
+      sheet.aligned(foot, apex, u(16), String(Math.round(Math.hypot(apex[0] - foot[0], apex[1] - foot[1]))));
     }
   }
 
@@ -203,8 +214,8 @@
   // name's full height once the sweep is past the name
   function nameDims(p) {
     var rows = {
-      below: p.base + Math.max(sheet.ink(nameEl, 'g').down, sheet.ink(nameEl, 'j').down) + 16,
-      above: p.base - sheet.ink(nameEl, 'A').up - 14
+      below: p.base + Math.max(sheet.ink(nameEl, 'g').down, sheet.ink(nameEl, 'j').down) + u(16),
+      above: p.base - sheet.ink(nameEl, 'A').up - u(14)
     };
     var jobs = [], end = 0;
     pickStyles().forEach(function (s, i) {
@@ -252,17 +263,17 @@
     var r = { x: b.left - h.left, y: b.top - h.top, right: b.right - h.left, bottom: b.bottom - h.top };
     var under = Array.prototype.every.call(S.host.querySelectorAll('.chev'), function (c) {
       var a = S.rel(c);
-      return a.x > r.right || a.right < r.x || a.y > r.bottom + 36 || a.bottom < r.bottom;
+      return a.x > r.right || a.right < r.x || a.y > r.bottom + u(36) || a.bottom < r.bottom;
     });
-    var edge = under ? r.bottom : r.y, y = under ? r.bottom + 22 : r.y - 16;
+    var edge = under ? r.bottom : r.y, y = under ? r.bottom + u(22) : r.y - u(16);
     // a text box's dimensions stay up until its text has closed back into them
     function stay(g) { if (text) g.classList.add('late'); }
     var jobs = [{ x: h.left + r.right, draw: function () {
       stay(S.horizontal([r.x, edge], [r.right, edge], y, px(r.right - r.x)));
     } }];
-    if (b.left >= 40) {
+    if (b.left >= u(40)) {
       jobs.push({ x: h.left + r.x, draw: function () {
-        stay(S.vertical([r.x, r.y], [r.x, r.bottom], r.x - 22, px(r.bottom - r.y)));
+        stay(S.vertical([r.x, r.y], [r.x, r.bottom], r.x - u(22), px(r.bottom - r.y)));
       } });
     }
     return jobs;
@@ -279,10 +290,10 @@
       var side = tip[1] < p1[1] ? -1 : 1; // ^ has its point above its ends, v below
       var turn = Math.abs(Math.atan2(p2[1] - tip[1], p2[0] - tip[0]) - Math.atan2(p1[1] - tip[1], p1[0] - tip[0]));
       var deg = Math.round(Math.min(turn, 2 * Math.PI - turn) * 180 / Math.PI);
-      return { x: left + p2[0] + 14, draw: function () {
-        S.horizontal(p1, p2, tip[1] + side * 12, String(Math.round(p2[0] - p1[0])));
-        S.vertical(tip, p2, p2[0] + 14, String(Math.round(Math.abs(p2[1] - tip[1]))));
-        S.angle(tip, p1, p2, 15, deg + '°');
+      return { x: left + p2[0] + u(14), draw: function () {
+        S.horizontal(p1, p2, tip[1] + side * u(12), String(Math.round(p2[0] - p1[0])));
+        S.vertical(tip, p2, p2[0] + u(14), String(Math.round(Math.abs(p2[1] - tip[1]))));
+        S.angle(tip, p1, p2, u(15), deg + '°');
       } };
     });
   }
@@ -295,7 +306,7 @@
       { clipPath: 'inset(0 100% 0 0)', opacity: 0 },
       { opacity: 1, offset: 0.2 },
       { clipPath: 'inset(0 0% 0 0)', opacity: 1 }
-    ], { duration: r.width / WRITE_SPEED, delay: at(r.left), easing: 'linear', fill: 'backwards' }));
+    ], { duration: r.width / u(WRITE_SPEED), delay: at(r.left), easing: 'linear', fill: 'backwards' }));
   }
 
   // Only what's on screen right now (not a hidden project, a closed panel or the hidden section)
@@ -338,8 +349,8 @@
     // An invisible line sweeps from just left of the page to the right at a steady pace: the text
     // (and the resume, player and map) appears as it passes, and each dimension draws the moment
     // the sweep reaches its right end
-    var x0 = hero.getBoundingClientRect().left - 18;
-    function writeAt(x) { return 60 + Math.max(0, x - x0) / WRITE_SPEED; }
+    var x0 = hero.getBoundingClientRect().left - u(18);
+    function writeAt(x) { return 60 + Math.max(0, x - x0) / u(WRITE_SPEED); }
     var jobs = run.jobs().concat(arrowDims(chevs));
     textBoxes.forEach(function (el) { jobs = jobs.concat(boxDims(el, true)); });
     attached.forEach(function (el) { jobs = jobs.concat(boxDims(el, false)); wipeIn(el, writeAt); });
@@ -352,7 +363,7 @@
     var t = Math.max(LONGEST_LINE_MS, sweepEnd + 120) + DIM_MS + HOLD_MS;
     // The (notes) start fading in once the drawing is finished, a little faster
     run.appear(function (x, span) {
-      return span.closest(NOTES) ? t - HOLD_MS + Math.max(0, x - x0) / NOTES_SPEED : writeAt(x);
+      return span.closest(NOTES) ? t - HOLD_MS + Math.max(0, x - x0) / u(NOTES_SPEED) : writeAt(x);
     }, later);
     freeze(true);
 
@@ -419,16 +430,18 @@
 
   // Press r (anywhere on the page) to watch it again, from wherever you are on the page. Anything
   // with its own entrance (the map drawing its outline and dropping its pins) plays that again too.
-  function replay() {
+  // atCursor: the border starts from the cursor (pressing r), not the corners (a resize)
+  function replay(atCursor) {
     finish();
     document.dispatchEvent(new Event('intro-replay'));
+    fromCursor = !!atCursor;
     play();
   }
   document.addEventListener('keydown', function (e) {
     if (e.key !== 'r' && e.key !== 'R') return;
     if (e.metaKey || e.ctrlKey || e.altKey) return;       // leave Cmd+R (reload) alone
     if (e.target.closest && e.target.closest('input, textarea, [contenteditable]')) return; // typing in a box
-    replay();
+    replay(true);
   });
 
   // Keep the border the right size if the window changes size; mid-drawing, start it again at the new size

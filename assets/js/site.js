@@ -1,6 +1,8 @@
 // Shared code for every section:
 // - loads site-data.json (the list of entries and photos Jekyll makes on every push)
 // - builds photo/video galleries
+// - the pieces every entry is built from (role line, bullets, photo column) and new-tab links
+// - motion timings read from style.css (Site.motion, Site.time)
 // - the little "nothing there" shake
 window.Site = (function () {
   'use strict';
@@ -62,6 +64,41 @@ window.Site = (function () {
     return e;
   }
 
+  // A link that opens in a new tab
+  function link(href, cls, text) {
+    var a = el('a', cls);
+    a.href = href;
+    a.target = '_blank';
+    a.rel = 'noopener';
+    if (text != null) a.textContent = text;
+    return a;
+  }
+
+  // ----- Pieces every entry (experience or project) is built from -----
+
+  // The line under an entry's name: "Role (Month, Year - Month, Year)"
+  function entrySub(label, meta) {
+    var when = dates(meta), p = el('p', 'entry-sub');
+    p.textContent = (label || '') + (when ? ' (' + when + ')' : '');
+    return p;
+  }
+
+  // An entry's bullet points (each one already HTML from its about.md)
+  function bullets(list) {
+    var ul = el('ul', 'bullets');
+    list.forEach(function (b) { ul.appendChild(el('li', null, b)); });
+    return ul;
+  }
+
+  // The photos column beside an entry's text; with no photos the entry gets "no-photos" instead
+  function photoColumn(into, e, label) {
+    var g = gallery(e.media, label, e.meta.focus);
+    if (!g) { into.classList.add('no-photos'); return; }
+    var photos = el('div', 'xphotos');
+    photos.appendChild(g);
+    into.appendChild(photos);
+  }
+
   // "Sep 2026" -> "Sept, 2026"; years on their own ("2016") and words ("Present") stay as they are
   var MONTHS = { Jan: 'Jan', Feb: 'Feb', Mar: 'Mar', Apr: 'Apr', May: 'May', Jun: 'June', June: 'June',
     Jul: 'July', July: 'July', Aug: 'Aug', Sep: 'Sept', Sept: 'Sept', Oct: 'Oct', Nov: 'Nov', Dec: 'Dec' };
@@ -88,11 +125,16 @@ window.Site = (function () {
   // so CSS and JS animations change together. Duration is 0 when the visitor asks for less motion.
   function motion(name) {
     var css = getComputedStyle(document.documentElement);
-    var t = css.getPropertyValue('--' + name + '-time').trim();
     return {
-      duration: reduced ? 0 : parseFloat(t) * (/ms$/.test(t) ? 1 : 1000),
+      duration: reduced ? 0 : time(name),
       easing: css.getPropertyValue('--' + name + '-ease').trim() || 'ease'
     };
+  }
+
+  // A timing from style.css in ms (--<name>-time), always the real value (not 0 for less motion)
+  function time(name) {
+    var t = getComputedStyle(document.documentElement).getPropertyValue('--' + name + '-time').trim();
+    return parseFloat(t) * (/ms$/.test(t) ? 1 : 1000) || 0;
   }
 
   // ----- Gallery: cycles by itself, arrows show on hover -----
@@ -138,7 +180,7 @@ window.Site = (function () {
       clearTimeout(timer);
       if (slides.length < 2 || reduced) return;
       // only moves while it's on the page (hidden entries wait) and not hovered
-      timer = setTimeout(function () { if (!paused && box.isConnected) show(i + 1); tick(); }, 4000);
+      timer = setTimeout(function () { if (!paused && box.isConnected) show(i + 1); tick(); }, time('gallery'));
     }
 
     if (slides.length > 1) {
@@ -159,5 +201,5 @@ window.Site = (function () {
     return box;
   }
 
-  return { data: data, el: el, dates: dates, shake: shake, gallery: gallery, motion: motion, reduced: reduced };
+  return { data: data, el: el, link: link, entrySub: entrySub, bullets: bullets, photoColumn: photoColumn, dates: dates, shake: shake, gallery: gallery, motion: motion, time: time, reduced: reduced };
 })();

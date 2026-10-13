@@ -9,8 +9,11 @@
   if (!mount) return;
 
   var EXIT = 0.7;     // how far (in radians) a project rolls before it's gone
-  var CENTRE = 260;   // how far left of the project the circle's centre is, in px
-  var GAP = 22;       // space between the project and its arrows, in px
+  var CENTRE = 260;   // how far left of the project the circle's centre is, in px on the Mac
+  var GAP = 22;       // space between the project and its arrows, in px on the Mac
+
+  // n px on the Mac, grown with the rest of the site on a wide window (assets/js/draft.js)
+  function u(n) { return n * Draft.scale(); }
 
   Site.data.then(function (data) {
     var list = data.section('projects');
@@ -41,19 +44,19 @@
     }
 
     function layout() {
-      var small = mount.clientWidth < 600;
-      var arrowW = small ? 56 : 80;
+      var small = mount.clientWidth < u(600);
+      var arrowW = u(small ? 56 : 80);
       arrowH = arrowW / 2;
       up.style.width = down.style.width = arrowW + 'px';
       up.style.height = down.style.height = arrowH + 'px';
 
-      top = arrowH + GAP + 8;                       // every project starts just under the ^
+      top = arrowH + u(GAP + 8);                       // every project starts just under the ^
       mount.style.transition = 'none';              // no growing animation when the page first lays out
 
       cards.forEach(function (c, n) {
         var h = c.offsetHeight;
         c.style.top = top + 'px';
-        c.style.transformOrigin = (-CENTRE) + 'px ' + (h / 2) + 'px'; // the circle's centre
+        c.style.transformOrigin = (-u(CENTRE)) + 'px ' + (h / 2) + 'px'; // the circle's centre
         c.style.transition = 'none';
         place(c, n === i ? 0 : EXIT);
       });
@@ -67,9 +70,10 @@
     // and the section is only as tall as that project, so a short one leaves no gap below
     function fit() {
       var h = cards[i].offsetHeight;
-      up.style.top = (top - GAP - arrowH) + 'px';
-      down.style.top = (top + h + GAP) + 'px';
-      mount.style.height = (h + 2 * (GAP + arrowH) + 16) + 'px';
+      var gap = u(GAP);
+      up.style.top = (top - gap - arrowH) + 'px';
+      down.style.top = (top + h + gap) + 'px';
+      mount.style.height = (h + 2 * (gap + arrowH) + u(16)) + 'px';
     }
 
     function show(n) {
@@ -123,39 +127,19 @@
     // Heading, two lines:  Project  /  Deliverable (Month Year - Month Year)
     var name = Site.el('p', 'entry-name');
     name.textContent = m.title || '';
-    var sub = Site.el('p', 'entry-sub');
-    var when = Site.dates(m);
-    sub.textContent = (m.deliverable || '') + (when ? ' (' + when + ')' : '');
     text.appendChild(name);
-    text.appendChild(sub);
-
-    var ul = Site.el('ul', 'bullets');
-    e.bullets.forEach(function (b) { ul.appendChild(Site.el('li', null, b)); });
-    text.appendChild(ul);
+    text.appendChild(Site.entrySub(m.deliverable, m));
+    text.appendChild(Site.bullets(e.bullets));
 
     if (m.tools && m.tools.length) {
       var tools = Site.el('p', 'ptools');
       tools.textContent = m.tools.join(', ');
       text.appendChild(tools);
     }
-    if (m.link) {
-      var a = Site.el('a', 'plink');
-      a.href = m.link;
-      a.target = '_blank';
-      a.rel = 'noopener';
-      a.textContent = 'more →';
-      text.appendChild(a);
-    }
+    if (m.link) text.appendChild(Site.link(m.link, 'plink', 'more →'));
 
     card.appendChild(text);
-    var g = Site.gallery(e.media, m.title || 'Project', m.focus);
-    if (g) {
-      var photos = Site.el('div', 'xphotos');
-      photos.appendChild(g);
-      card.appendChild(photos);
-    } else {
-      card.classList.add('no-photos');
-    }
+    Site.photoColumn(card, e, m.title || 'Project');
     return card;
   }
 })();

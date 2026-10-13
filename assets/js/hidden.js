@@ -27,7 +27,7 @@
     w.className = 'shh-word';
     w.textContent = pick(WORDS);
     w.style.fontFamily = pick(FONTS) + ', ui-monospace, monospace';
-    w.style.fontSize = Math.round(12 + Math.pow(Math.random(), 2.2) * 40) + 'px'; // mostly small, some big
+    w.style.fontSize = (1.2 + Math.pow(Math.random(), 2.2) * 4).toFixed(2) + 'rem'; // 12-52px on the Mac: mostly small, some big
     w.style.fontWeight = Math.random() < 0.3 ? 700 : 400;
     w.style.opacity = (0.45 + Math.random() * 0.55).toFixed(2);
     wall.appendChild(w);

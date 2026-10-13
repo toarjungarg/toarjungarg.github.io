@@ -164,9 +164,11 @@
       window.removeEventListener('scroll', check);
       window.removeEventListener('resize', check);
       void path.getBoundingClientRect();
-      path.style.transition = 'stroke-dashoffset 0.9s ease-out, fill 0.5s ease';
+      var m = Site.motion('map-draw');   // style.css: --map-draw-time / --map-draw-ease
+      path.style.transition = 'stroke-dashoffset ' + m.duration + 'ms ' + m.easing + ', fill 0.5s ease';
       path.style.strokeDashoffset = '0';
-      timer = setTimeout(function () { frame.classList.add('drawn'); }, 650);
+      // the land fills in and the pins drop once the outline is nearly done
+      timer = setTimeout(function () { frame.classList.add('drawn'); }, m.duration * 0.72);
     }
 
     reset();

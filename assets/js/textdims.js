@@ -47,7 +47,7 @@ window.TextDims = (function () {
   var WORD_HEIGHT_SHARE = 0.2; // same for the words in longer text
   var LINE_SHARE = 0.4;        // share of the lines in longer text that get one dimension across the whole line
   var LINE_HEIGHT_SHARE = 0.3; // share of lines that also get their full height at the end, when there's room
-  var FINE_UNDER = 19;         // text smaller than this (px) gets the smaller arrowheads and numbers
+  var FINE_UNDER = 19;         // text smaller than this (px on the Mac) gets the smaller arrowheads and numbers
   // Text can spread sideways as far as the edge of the closest of these around it
   var ROOM = '.hero, .xbody, .pcard, .trip-inner, .resume-head, .section, .footer';
   // The lines in each of these spread apart together. Inside one that cuts off whatever sticks out
@@ -59,6 +59,8 @@ window.TextDims = (function () {
   var each = Array.prototype.forEach;
   function pick(list) { return list[Math.floor(Math.random() * list.length)]; }
   function px(n) { return n.toFixed(1) + 'px'; }
+  // n px on the Mac, grown with the rest of the site on a wide window (assets/js/draft.js)
+  function u(n) { return n * Draft.scale(); }
   function make(tag, cls, text) {
     var e = document.createElement(tag);
     if (cls) e.className = cls;
@@ -76,7 +78,7 @@ window.TextDims = (function () {
       var cs = getComputedStyle(el), nodes = textNodes(el);
       return {
         el: el, o: optionsFor(el) || {}, nodes: nodes, oneLine: lineCount(nodes) <= 1,
-        fine: parseFloat(cs.fontSize) < FINE_UNDER, wasStatic: cs.position === 'static',
+        fine: parseFloat(cs.fontSize) < u(FINE_UNDER), wasStatic: cs.position === 'static',
         height: el.getBoundingClientRect().height,
         made: [], items: [], chars: [], text: '', lines: []
       };
@@ -310,7 +312,7 @@ window.TextDims = (function () {
         return;
       }
       var roomL = items[0].rest.left - room.left, roomR = room.right - items[items.length - 1].rest.right;
-      var centred = roomL > 6 && Math.abs(roomL - roomR) < 6;
+      var centred = roomL > u(6) && Math.abs(roomL - roomR) < u(6);
       var space = Math.max(0, centred ? 2 * Math.min(roomL, roomR) : roomR);
       if (p.oneLine) {
         spreadLetters(p, line, space);
@@ -368,13 +370,13 @@ window.TextDims = (function () {
     var every = p.o.every || EVERY;
     for (var k = p.o.dims ? n : Math.floor(Math.random() * Math.min(Math.max.apply(null, every), n)); k < n; k += pick(every)) {
       var ink = items[k].ink, last = picks[picks.length - 1];
-      if (ink.left + ink.right < 3) continue; // dots and commas are too small
+      if (ink.left + ink.right < u(3)) continue; // dots and commas are too small
       if (p.o.noDims && items[k].span.closest(p.o.noDims)) continue;
       var beside = last && last.k === k - 1 && items[k].i === items[k - 1].i + 1; // right after it, same word
       // two widths side by side on the same row would run into each other
       var free = allowed.filter(function (r) { return !(beside && last.row === r); });
       var sides = [];
-      if (ink.up + ink.down >= 5) {
+      if (ink.up + ink.down >= u(5)) {
         if (!used[k]) sides.push('right');
         if (k > 0 && !used[k - 1] && !beside) sides.push('left');
       }
@@ -600,10 +602,10 @@ window.TextDims = (function () {
   // Now and then a line also gets its full height at its end, when there's room there
   function lineHeight(p, line, taken, out) {
     var S = p.sheet, items = line.items, last = items[items.length - 1].box;
-    if (taken || p.edgeX - last.r < 40 || Math.random() >= LINE_HEIGHT_SHARE) return;
+    if (taken || p.edgeX - last.r < u(40) || Math.random() >= LINE_HEIGHT_SHARE) return;
     var top = Math.min.apply(null, items.map(function (it) { return it.box.top; }));
     var bottom = Math.max.apply(null, items.map(function (it) { return it.box.bottom; }));
-    var x = last.r + (p.fine ? 14 : 20);
+    var x = last.r + u(p.fine ? 14 : 20);
     out.push({ x: p.left + x, draw: function () {
       S.vertical([last.r, top], [last.r, bottom], x, String(Math.round(bottom - top)));
     } });

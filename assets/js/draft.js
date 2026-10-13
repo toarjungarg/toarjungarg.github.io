@@ -13,6 +13,7 @@
 //   sheet.leader([40, 40], 'R14', { dx: 1, dy: 1 });    // arrow touching a point, then a landing line, then text
 //   sheet.box(span)                                     // ink box and baseline of the text in an inline-block span
 //   sheet.size.row, .beside, .room                      // where widths and heights go next to text, and the room they need
+//   Draft.scale()                                       // how much the site is scaled up on a wide window (1 on the Mac)
 //   sheet.fade()  /  sheet.stop()  /  sheet.clear()  /  sheet.remove()
 //
 // Every point is in px from the element's top-left corner. Dimensions get the class "dim temp",
@@ -32,6 +33,16 @@ window.Draft = (function () {
     fine: { head: 4, headW: 1.5, gap: 2, over: 3, out: 7, short: 40, row: 6, beside: 5, room: 20 }
   };
   var ctx = document.createElement('canvas').getContext('2d');
+
+  // How much the whole site is scaled up on a wide window (style.css: the html font size, where
+  // 1rem = 10px at the Mac's width). Fixed sizes in the scripts are multiplied by this so they grow
+  // with the CSS: Draft.scale() * 22 is "22px on the Mac".
+  function scale() { return (parseFloat(getComputedStyle(document.documentElement).fontSize) || 10) / 10; }
+  function scaled(set) {
+    var k = scale(), out = {};
+    for (var n in set) out[n] = set[n] * k;
+    return out;
+  }
 
   function make(tag, attrs, parent) {
     var e = document.createElementNS(NS, tag);
@@ -54,7 +65,7 @@ window.Draft = (function () {
 
   function sheet(host, o) {
     o = o || {};
-    var S = o.fine ? SIZES.fine : SIZES.normal;
+    var S = scaled(o.fine ? SIZES.fine : SIZES.normal); // re-read on clear(), in case the window changed size
     var svg = host.querySelector(':scope > svg.sketch') ||
       make('svg', { class: 'sketch' + (o.fine ? ' fine' : ''), 'aria-hidden': 'true' }, host);
     var anims = [];
@@ -264,15 +275,15 @@ window.Draft = (function () {
       svg.querySelectorAll('.temp' + (keep ? ':not(' + keep + ')' : '')).forEach(function (el) { el.classList.add('gone'); });
     }
     function stop() { anims.forEach(function (a) { a.cancel(); }); anims = []; }
-    function clear() { stop(); svg.innerHTML = ''; }
+    function clear() { stop(); svg.innerHTML = ''; S = scaled(o.fine ? SIZES.fine : SIZES.normal); }
     function remove() { stop(); svg.remove(); }
 
     return {
-      host: host, svg: svg, size: S, rel: rel, box: box, ink: ink,
+      host: host, svg: svg, get size() { return S; }, rel: rel, box: box, ink: ink,
       line: line, trace: trace, horizontal: horizontal, vertical: vertical, aligned: aligned, angle: angle, leader: leader,
       fade: fade, stop: stop, clear: clear, remove: remove
     };
   }
 
-  return { sheet: sheet };
+  return { sheet: sheet, scale: scale };
 })();

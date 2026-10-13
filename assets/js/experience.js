@@ -203,26 +203,19 @@
     var body = Site.el('div', 'xbody');
     var text = Site.el('div', 'xtext');
 
-    // Under the < Name > heading: Role (Month, Year - Month, Year)
-    var sub = Site.el('p', 'entry-sub');
-    var when = Site.dates(m);
-    sub.textContent = (m.role || '') + (when ? ' (' + when + ')' : '');
-
-    var ul = Site.el('ul', 'bullets');
-    e.bullets.forEach(function (b) { ul.appendChild(Site.el('li', null, b)); });
-
-    text.appendChild(sub);
-    text.appendChild(ul);
+    // Under the < Name > heading: the organization (a link to its site when about.md has one),
+    // then Role (Month, Year - Month, Year), then the bullets
+    if (m.organization) {
+      var org = Site.el('p', 'entry-org');
+      if (m.link) org.appendChild(Site.link(m.link, null, m.organization));
+      else org.textContent = m.organization;
+      text.appendChild(org);
+    }
+    text.appendChild(Site.entrySub(m.role, m));
+    text.appendChild(Site.bullets(e.bullets));
     body.appendChild(text);
 
-    var g = Site.gallery(e.media, m.label, m.focus);
-    if (g) {
-      var photos = Site.el('div', 'xphotos');
-      photos.appendChild(g);
-      body.appendChild(photos);
-    } else {
-      body.classList.add('no-photos');
-    }
+    Site.photoColumn(body, e, m.label);
     return body;
   }
 })();
