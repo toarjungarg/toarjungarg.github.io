@@ -2,7 +2,7 @@
 # Top 10 Songs: each song's cover (in content/songs/covers/), name and artist; clicking opens it on Spotify.
 # To update: change the songs in the playlist on Spotify, run /updateSongs (it remakes this list and
 # the covers from the playlist), and change "updated" here.
-updated: "Oct 13, 2026"
+updated: "Oct 14, 2026"
 spotify_playlist: "3GnYNkBUslw50SzuKuKfJP"
 songs:
   - title: "Crooked Smile (feat. TLC)"
@@ -33,16 +33,16 @@ songs:
     artist: "J. Cole"
     link: "https://open.spotify.com/track/3pjUyVbFmM96tYhSaKJwTt"
     cover: "7-change.jpg"
-  - title: "Toronto 2014 (with Mustafa)"
-    artist: "Daniel Caesar, Mustafa"
-    link: "https://open.spotify.com/track/4t9R5rbtovdvya28uMODDz"
-    cover: "8-toronto-2014.jpg"
   - title: "Quebec"
     artist: "Drake"
     link: "https://open.spotify.com/track/67DgVQlvQ0qilSBN1hdkKN"
-    cover: "9-quebec.jpg"
+    cover: "8-quebec.jpg"
   - title: "Fireworks"
     artist: "Drake, Alicia Keys"
     link: "https://open.spotify.com/track/4pUUhsc8fmZqnsPaOSU5CP"
-    cover: "10-fireworks.jpg"
+    cover: "9-fireworks.jpg"
+  - title: "Love Yourz"
+    artist: "J. Cole"
+    link: "https://open.spotify.com/track/2e3Ea0o24lReQFR4FA7yXH"
+    cover: "10-love-yourz.jpg"
 ---
